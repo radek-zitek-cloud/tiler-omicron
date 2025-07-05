@@ -231,8 +231,6 @@ function getGridPositionFromCoordinates(clientX: number, clientY: number): { x: 
   };
 }
 
-// Note: getGridSizeFromDimensions function removed as it was unused
-
 // Tile operations
 
 /**
