@@ -7,7 +7,7 @@
 
 <script setup lang="ts">
 import { onMounted } from 'vue';
-import DashboardContainer from './components/DashboardContainer.vue';
+import { RouterView } from 'vue-router';
 
 // Initialize Bootstrap JavaScript components when the app mounts
 onMounted(() => {
@@ -20,8 +20,8 @@ onMounted(() => {
 
 <template>
   <div id="app" class="min-vh-100">
-    <!-- Main Dashboard -->
-    <DashboardContainer />
+    <!-- Main Application Content -->
+    <RouterView />
   </div>
 </template>
 
