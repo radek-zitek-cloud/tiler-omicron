@@ -1,9 +1,9 @@
 /**
  * Dashboard Store - Pinia store for managing dashboard state
- * 
+ *
  * This store handles all dashboard state management including tiles,
  * layout persistence, drag/drop operations, and grid configuration.
- * 
+ *
  * Features:
  * - Tile CRUD operations (create, read, update, delete)
  * - Layout persistence with localStorage
@@ -46,7 +46,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
 
   const gridConfig = ref<GridConfig>({ ...DEFAULT_GRID_CONFIG });
   const currentBreakpoint = ref<'desktop' | 'tablet' | 'mobile' | 'smallMobile'>('desktop');
-  
+
   const dragState = ref<DragState>({
     isDragging: false,
     draggedTileId: null,
@@ -66,7 +66,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
 
   // Computed properties
   const tiles = computed(() => currentLayout.value.tiles);
-  
+
   const gridColumns = computed(() => {
     switch (currentBreakpoint.value) {
       case 'desktop':
@@ -87,7 +87,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
   });
 
   // Utility functions
-  
+
   /**
    * Generates a unique tile ID
    * @returns {string} Unique tile identifier
@@ -104,7 +104,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
    */
   function findNextAvailablePosition(width: number, height: number): GridPosition {
     const occupiedPositions = new Set<string>();
-    
+
     // Mark all occupied positions
     tiles.value.forEach(tile => {
       for (let x = tile.x; x < tile.x + tile.width; x++) {
@@ -118,7 +118,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     for (let y = 0; y < 1000; y++) { // Reasonable limit
       for (let x = 0; x <= gridColumns.value - width; x++) {
         let canPlace = true;
-        
+
         // Check if the entire tile area is free
         for (let checkX = x; checkX < x + width && canPlace; checkX++) {
           for (let checkY = y; checkY < y + height && canPlace; checkY++) {
@@ -127,7 +127,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
             }
           }
         }
-        
+
         if (canPlace) {
           return {
             x,
@@ -151,7 +151,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
   /**
    * Checks if a tile position would cause conflicts
    * @param {number} x - X position
-   * @param {number} y - Y position  
+   * @param {number} y - Y position
    * @param {number} width - Width in grid units
    * @param {number} height - Height in grid units
    * @param {string} excludeTileId - Tile ID to exclude from conflict check
@@ -166,7 +166,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
   ): boolean {
     return tiles.value.some(tile => {
       if (excludeTileId && tile.id === excludeTileId) return false;
-      
+
       return !(
         x >= tile.x + tile.width ||
         x + width <= tile.x ||
@@ -182,7 +182,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
    */
   function logOperation(event: TileOperationEvent): void {
     operationHistory.value.push(event);
-    
+
     // Keep only last 100 operations
     if (operationHistory.value.length > 100) {
       operationHistory.value = operationHistory.value.slice(-100);
@@ -238,7 +238,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
    */
   function deleteTile(tileId: string): boolean {
     const index = currentLayout.value.tiles.findIndex(tile => tile.id === tileId);
-    
+
     if (index === -1) return false;
 
     const deletedTile = currentLayout.value.tiles[index];
@@ -263,7 +263,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
    */
   function updateTile(tileId: string, updates: Partial<Tile>): boolean {
     const tile = currentLayout.value.tiles.find(t => t.id === tileId);
-    
+
     if (!tile) return false;
 
     const oldValues = { ...tile };
@@ -289,7 +289,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
    */
   function moveTile(tileId: string, x: number, y: number): boolean {
     const tile = currentLayout.value.tiles.find(t => t.id === tileId);
-    
+
     if (!tile) return false;
 
     // Check bounds
@@ -314,7 +314,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
    */
   function resizeTile(tileId: string, width: number, height: number): boolean {
     const tile = currentLayout.value.tiles.find(t => t.id === tileId);
-    
+
     if (!tile) return false;
 
     // Enforce minimum/maximum constraints
@@ -470,7 +470,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
         created: currentLayout.value.created.toISOString(),
         modified: currentLayout.value.modified.toISOString(),
       });
-      
+
       localStorage.setItem('dashboard-layout', layoutData);
     } catch (error) {
       console.error('Failed to save layout to localStorage:', error);
@@ -483,10 +483,10 @@ export const useDashboardStore = defineStore('dashboard', () => {
   function loadLayout(): void {
     try {
       const savedLayout = localStorage.getItem('dashboard-layout');
-      
+
       if (savedLayout) {
         const layoutData = JSON.parse(savedLayout);
-        
+
         currentLayout.value = {
           ...layoutData,
           tiles: layoutData.tiles.map((tile: unknown) => {
@@ -507,6 +507,30 @@ export const useDashboardStore = defineStore('dashboard', () => {
       }
     } catch (error) {
       console.error('Failed to load layout from localStorage:', error);
+    }
+  }
+
+  /**
+   * Loads layout data from an imported layout object
+   * @param {DashboardLayout} layoutData - Layout data to load
+   */
+  function loadLayoutData(layoutData: DashboardLayout): void {
+    try {
+      currentLayout.value = {
+        ...layoutData,
+        modified: new Date(), // Update modified time to current time
+      };
+
+      // Log the import operation
+      logOperation({
+        operation: 'create',
+        tileId: 'layout',
+        data: { action: 'import_layout', layoutName: layoutData.name },
+        timestamp: new Date(),
+      });
+    } catch (error) {
+      console.error('Failed to load layout data:', error);
+      throw error;
     }
   }
 
@@ -532,7 +556,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
   function clearDashboard(): void {
     currentLayout.value.tiles = [];
     currentLayout.value.modified = new Date();
-    
+
     logOperation({
       operation: 'delete',
       tileId: 'all',
@@ -561,11 +585,11 @@ export const useDashboardStore = defineStore('dashboard', () => {
     dragState: computed(() => dragState.value),
     resizeState: computed(() => resizeState.value),
     operationHistory: computed(() => operationHistory.value),
-    
+
     // Computed
     tiles,
     gridColumns,
-    
+
     // Actions
     createTile,
     deleteTile,
@@ -580,6 +604,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     endResize,
     saveLayout,
     loadLayout,
+    loadLayoutData,
     updateBreakpoint,
     clearDashboard,
     findNextAvailablePosition,

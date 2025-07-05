@@ -7,23 +7,28 @@ A flexible, responsive web-based dashboard featuring a tile-based layout system 
 ## 🎯 Features
 
 ### Core Tile Operations
+
 - ✅ **Tile Creation** - Add new tiles with a simple "Add Tile" button
 - ✅ **Tile Deletion** - Remove tiles with confirmation dialogs
 - ✅ **Tile Resizing** - Resize tiles using corner and edge handles
 - ✅ **Tile Rearrangement** - Drag and drop tiles to new positions
 
 ### Grid System
+
 - ✅ **Responsive Grid** - 12-column system that adapts to screen size
 - ✅ **Grid Constraints** - Tiles snap to grid positions, no overlapping
 - ✅ **Automatic Layout** - Smart positioning for new tiles
 - ✅ **Visual Feedback** - Grid lines and drop zones during operations
 
 ### Layout Persistence
+
 - ✅ **Auto-Save** - Layout automatically saved to localStorage
 - ✅ **Session Persistence** - Restore exact layout on page reload
 - ✅ **Layout Export** - Export layout configuration as JSON
+- ✅ **Layout Import** - Import layout from JSON file with validation
 
 ### Responsive Design
+
 - ✅ **Desktop** (1200px+) - 12-column grid
 - ✅ **Tablet** (768px-1199px) - 8-column grid  
 - ✅ **Mobile** (576px-767px) - 4-column grid
@@ -46,7 +51,8 @@ A flexible, responsive web-based dashboard featuring a tile-based layout system 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Node.js 18+ 
+
+- Node.js 18+
 - npm or yarn
 
 ### Installation
@@ -73,6 +79,7 @@ npm run type-check
 ```
 
 ### Development Server
+
 The application will be available at `http://localhost:5173`
 
 ## 📖 Usage
@@ -88,13 +95,14 @@ The application will be available at `http://localhost:5173`
 
 - **Clear All**: Remove all tiles at once (with confirmation)
 - **Export Layout**: Download current layout as JSON
+- **Import Layout**: Upload and restore layout from JSON file
 - **Responsive**: Layout automatically adapts to screen size
 
 ## 🏗️ Architecture
 
 ### Component Structure
 
-```
+```text
 src/
 ├── components/
 │   ├── DashboardContainer.vue    # Main dashboard container
@@ -159,6 +167,7 @@ npm run type-check
 All requirements from `docs/REQUIREMENTS.md` have been implemented:
 
 ### Functional Requirements ✅
+
 - **FR-1**: Tile Creation
 - **FR-2**: Tile Deletion  
 - **FR-3**: Tile Resizing
@@ -169,6 +178,7 @@ All requirements from `docs/REQUIREMENTS.md` have been implemented:
 - **FR-8**: Interaction Feedback
 
 ### Technical Requirements ✅
+
 - **TR-1**: Technology Stack (Vue.js, Bootstrap, Vite)
 - **TR-2**: Performance Requirements
 - **TR-3**: Responsive Design

@@ -1,10 +1,10 @@
 <!--
   TileComponent - Individual tile with drag/resize capabilities
-  
+
   This component represents a single tile in the dashboard grid.
   It handles its own drag and drop operations, resize functionality,
   and provides a clean interface for tile content.
-  
+
   Key Features:
   - Drag and drop support
   - Resize handles (corner and edge)
@@ -28,15 +28,20 @@
   >
     <!-- Tile Header -->
     <div class="tile-header">
-      <div class="tile-title-container">
-        <h6 class="tile-title" :title="tile.title">
-          {{ tile.title }}
-        </h6>
-        <small class="tile-id text-muted">
-          {{ tile.id }}
-        </small>
+      <!-- Drag Handle (moved to front) -->
+      <div
+        class="drag-handle-inline"
+        @mousedown.stop="startDragFromHandle"
+        @touchstart.stop="startTouchDragFromHandle"
+        :title="'Drag ' + tile.title"
+      >
+        <i class="fas fa-grip-vertical" aria-hidden="true"></i>
       </div>
-      
+
+      <h6 class="tile-title" :title="tile.title">
+        {{ tile.title }}
+      </h6>
+
       <div class="tile-controls">
         <button
           class="btn btn-outline-secondary btn-sm tile-control-btn"
@@ -47,7 +52,7 @@
         >
           <i class="fas fa-edit" aria-hidden="true"></i>
         </button>
-        
+
         <button
           class="btn btn-outline-danger btn-sm tile-control-btn"
           type="button"
@@ -74,16 +79,6 @@
       </div>
     </div>
 
-    <!-- Drag Handle -->
-    <div
-      class="drag-handle"
-      @mousedown.stop="startDragFromHandle"
-      @touchstart.stop="startTouchDragFromHandle"
-      :title="'Drag ' + tile.title"
-    >
-      <i class="fas fa-grip-vertical" aria-hidden="true"></i>
-    </div>
-
     <!-- Resize Handles -->
     <div
       v-if="!isDragging"
@@ -99,7 +94,7 @@
       >
         <i class="fas fa-expand-alt" aria-hidden="true"></i>
       </div>
-      
+
       <!-- Edge resize handles -->
       <div
         class="resize-handle resize-handle-e"
@@ -108,7 +103,7 @@
         title="Resize width"
         aria-label="Resize tile width"
       ></div>
-      
+
       <div
         class="resize-handle resize-handle-s"
         @mousedown.stop="startResize('s', $event)"
@@ -192,7 +187,7 @@ const tileClasses = computed(() => ({
 
 const tileStyle = computed(() => {
   const columnWidth = 100 / props.gridColumns;
-  
+
   return {
     gridColumn: `${props.tile.x + 1} / span ${props.tile.width}`,
     gridRow: `${props.tile.y + 1} / span ${props.tile.height}`,
@@ -222,14 +217,14 @@ const dragGhostStyle = computed(() => ({
 function getGridPositionFromCoordinates(clientX: number, clientY: number): { x: number; y: number } {
   const container = tileElement.value?.closest('.grid-container') as HTMLElement;
   if (!container) return { x: 0, y: 0 };
-  
+
   const rect = container.getBoundingClientRect();
   const relativeX = clientX - rect.left;
   const relativeY = clientY - rect.top;
-  
+
   const columnWidth = rect.width / props.gridColumns;
   const rowHeight = 60; // Approximate row height - should match CSS
-  
+
   return {
     x: Math.max(0, Math.min(props.gridColumns - props.tile.width, Math.floor(relativeX / columnWidth))),
     y: Math.max(0, Math.floor(relativeY / rowHeight)),
@@ -267,15 +262,15 @@ function handleDragStart(event: DragEvent): void {
     event.preventDefault();
     return;
   }
-  
+
   // Set drag data for HTML5 drag and drop
   event.dataTransfer?.setData('text/plain', props.tile.id);
-  
+
   const rect = tileElement.value?.getBoundingClientRect();
   if (rect && event.dataTransfer) {
     event.dataTransfer.setDragImage(tileElement.value!, event.clientX - rect.left, event.clientY - rect.top);
   }
-  
+
   emit('dragStart', props.tile.id);
 }
 
@@ -293,14 +288,14 @@ function handleDragEnd(): void {
  */
 function startDragFromHandle(event: MouseEvent): void {
   event.preventDefault();
-  
+
   if (props.isResizing) return;
-  
+
   dragStartPosition.value = { x: event.clientX, y: event.clientY };
   isMouseDown.value = true;
-  
+
   emit('dragStart', props.tile.id);
-  
+
   document.addEventListener('mousemove', handleDragMove);
   document.addEventListener('mouseup', handleDragStop);
 }
@@ -311,15 +306,15 @@ function startDragFromHandle(event: MouseEvent): void {
  */
 function startTouchDragFromHandle(event: TouchEvent): void {
   event.preventDefault();
-  
+
   if (props.isResizing || event.touches.length !== 1) return;
-  
+
   const touch = event.touches[0];
   dragStartPosition.value = { x: touch.clientX, y: touch.clientY };
   isMouseDown.value = true;
-  
+
   emit('dragStart', props.tile.id);
-  
+
   document.addEventListener('touchmove', handleTouchDragMove, { passive: false });
   document.addEventListener('touchend', handleTouchDragStop);
 }
@@ -330,11 +325,11 @@ function startTouchDragFromHandle(event: TouchEvent): void {
  */
 function handleMouseDown(event: MouseEvent): void {
   // Only start drag if clicking on the tile content, not controls
-  if ((event.target as HTMLElement).closest('.tile-controls') || 
+  if ((event.target as HTMLElement).closest('.tile-controls') ||
       (event.target as HTMLElement).closest('.resize-handle')) {
     return;
   }
-  
+
   startDragFromHandle(event);
 }
 
@@ -344,11 +339,11 @@ function handleMouseDown(event: MouseEvent): void {
  */
 function handleTouchStart(event: TouchEvent): void {
   // Only start drag if touching the tile content, not controls
-  if ((event.target as HTMLElement).closest('.tile-controls') || 
+  if ((event.target as HTMLElement).closest('.tile-controls') ||
       (event.target as HTMLElement).closest('.resize-handle')) {
     return;
   }
-  
+
   startTouchDragFromHandle(event);
 }
 
@@ -358,9 +353,9 @@ function handleTouchStart(event: TouchEvent): void {
  */
 function handleDragMove(event: MouseEvent): void {
   if (!isMouseDown.value || !dragStartPosition.value) return;
-  
+
   event.preventDefault();
-  
+
   const position = getGridPositionFromCoordinates(event.clientX, event.clientY);
   emit('dragMove', position);
 }
@@ -371,9 +366,9 @@ function handleDragMove(event: MouseEvent): void {
  */
 function handleTouchDragMove(event: TouchEvent): void {
   if (!isMouseDown.value || !dragStartPosition.value || event.touches.length !== 1) return;
-  
+
   event.preventDefault();
-  
+
   const touch = event.touches[0];
   const position = getGridPositionFromCoordinates(touch.clientX, touch.clientY);
   emit('dragMove', position);
@@ -384,12 +379,12 @@ function handleTouchDragMove(event: TouchEvent): void {
  */
 function handleDragStop(): void {
   if (!isMouseDown.value) return;
-  
+
   isMouseDown.value = false;
   dragStartPosition.value = null;
-  
+
   emit('dragEnd', true);
-  
+
   document.removeEventListener('mousemove', handleDragMove);
   document.removeEventListener('mouseup', handleDragStop);
 }
@@ -399,12 +394,12 @@ function handleDragStop(): void {
  */
 function handleTouchDragStop(): void {
   if (!isMouseDown.value) return;
-  
+
   isMouseDown.value = false;
   dragStartPosition.value = null;
-  
+
   emit('dragEnd', true);
-  
+
   document.removeEventListener('touchmove', handleTouchDragMove);
   document.removeEventListener('touchend', handleTouchDragStop);
 }
@@ -419,9 +414,9 @@ function handleTouchDragStop(): void {
 function startResize(handle: 'se' | 'e' | 's', event: MouseEvent): void {
   event.preventDefault();
   event.stopPropagation();
-  
+
   if (props.isDragging) return;
-  
+
   resizeStartData.value = {
     handle,
     startX: event.clientX,
@@ -429,9 +424,9 @@ function startResize(handle: 'se' | 'e' | 's', event: MouseEvent): void {
     startWidth: props.tile.width,
     startHeight: props.tile.height,
   };
-  
+
   emit('resizeStart', props.tile.id, handle);
-  
+
   document.addEventListener('mousemove', handleResizeMove);
   document.addEventListener('mouseup', handleResizeStop);
 }
@@ -444,9 +439,9 @@ function startResize(handle: 'se' | 'e' | 's', event: MouseEvent): void {
 function startTouchResize(handle: 'se' | 'e' | 's', event: TouchEvent): void {
   event.preventDefault();
   event.stopPropagation();
-  
+
   if (props.isDragging || event.touches.length !== 1) return;
-  
+
   const touch = event.touches[0];
   resizeStartData.value = {
     handle,
@@ -455,9 +450,9 @@ function startTouchResize(handle: 'se' | 'e' | 's', event: TouchEvent): void {
     startWidth: props.tile.width,
     startHeight: props.tile.height,
   };
-  
+
   emit('resizeStart', props.tile.id, handle);
-  
+
   document.addEventListener('touchmove', handleTouchResizeMove, { passive: false });
   document.addEventListener('touchend', handleTouchResizeStop);
 }
@@ -468,12 +463,12 @@ function startTouchResize(handle: 'se' | 'e' | 's', event: TouchEvent): void {
  */
 function handleResizeMove(event: MouseEvent): void {
   if (!resizeStartData.value) return;
-  
+
   event.preventDefault();
-  
+
   const deltaX = event.clientX - resizeStartData.value.startX;
   const deltaY = event.clientY - resizeStartData.value.startY;
-  
+
   calculateAndEmitNewSize(deltaX, deltaY);
 }
 
@@ -483,13 +478,13 @@ function handleResizeMove(event: MouseEvent): void {
  */
 function handleTouchResizeMove(event: TouchEvent): void {
   if (!resizeStartData.value || event.touches.length !== 1) return;
-  
+
   event.preventDefault();
-  
+
   const touch = event.touches[0];
   const deltaX = touch.clientX - resizeStartData.value.startX;
   const deltaY = touch.clientY - resizeStartData.value.startY;
-  
+
   calculateAndEmitNewSize(deltaX, deltaY);
 }
 
@@ -500,17 +495,17 @@ function handleTouchResizeMove(event: TouchEvent): void {
  */
 function calculateAndEmitNewSize(deltaX: number, deltaY: number): void {
   if (!resizeStartData.value) return;
-  
+
   const container = tileElement.value?.closest('.grid-container') as HTMLElement;
   if (!container) return;
-  
+
   const rect = container.getBoundingClientRect();
   const columnWidth = rect.width / props.gridColumns;
   const rowHeight = 60; // Should match CSS
-  
+
   let newWidth = resizeStartData.value.startWidth;
   let newHeight = resizeStartData.value.startHeight;
-  
+
   // Calculate new dimensions based on handle type
   switch (resizeStartData.value.handle) {
     case 'se':
@@ -524,16 +519,16 @@ function calculateAndEmitNewSize(deltaX: number, deltaY: number): void {
       newHeight = resizeStartData.value.startHeight + Math.round(deltaY / rowHeight);
       break;
   }
-  
+
   // Apply constraints
   const minWidth = props.tile.minWidth || DEFAULT_TILE_SIZE.minWidth;
   const minHeight = props.tile.minHeight || DEFAULT_TILE_SIZE.minHeight;
   const maxWidth = Math.min(props.tile.maxWidth || props.gridColumns, props.gridColumns - props.tile.x);
   const maxHeight = props.tile.maxHeight || 20;
-  
+
   newWidth = Math.max(minWidth, Math.min(maxWidth, newWidth));
   newHeight = Math.max(minHeight, Math.min(maxHeight, newHeight));
-  
+
   emit('resizeMove', { width: newWidth, height: newHeight });
 }
 
@@ -542,10 +537,10 @@ function calculateAndEmitNewSize(deltaX: number, deltaY: number): void {
  */
 function handleResizeStop(): void {
   if (!resizeStartData.value) return;
-  
+
   resizeStartData.value = null;
   emit('resizeEnd', true);
-  
+
   document.removeEventListener('mousemove', handleResizeMove);
   document.removeEventListener('mouseup', handleResizeStop);
 }
@@ -555,10 +550,10 @@ function handleResizeStop(): void {
  */
 function handleTouchResizeStop(): void {
   if (!resizeStartData.value) return;
-  
+
   resizeStartData.value = null;
   emit('resizeEnd', true);
-  
+
   document.removeEventListener('touchmove', handleTouchResizeMove);
   document.removeEventListener('touchend', handleTouchResizeStop);
 }
@@ -621,20 +616,39 @@ onUnmounted(() => {
 
 .tile-header {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  padding: 0.75rem;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
   background-color: var(--bs-light);
   border-bottom: 1px solid var(--bs-border-color);
-  min-height: 60px;
+  min-height: 40px;
 }
 
-.tile-title-container {
-  flex: 1;
-  min-width: 0;
+.drag-handle-inline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  color: var(--bs-secondary);
+  cursor: grab;
+  opacity: 0.7;
+  transition: all 0.2s ease;
+  border-radius: 2px;
+}
+
+.drag-handle-inline:hover {
+  color: var(--bs-primary);
+  background-color: rgba(0, 123, 255, 0.1);
+  opacity: 1;
+}
+
+.drag-handle-inline:active {
+  cursor: grabbing;
 }
 
 .tile-title {
+  flex: 1;
   margin: 0;
   font-size: 0.875rem;
   font-weight: 600;
@@ -642,11 +656,7 @@ onUnmounted(() => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.tile-id {
-  font-size: 0.75rem;
-  font-family: 'Courier New', monospace;
+  min-width: 0;
 }
 
 .tile-controls {
@@ -697,34 +707,6 @@ onUnmounted(() => {
   font-size: 0.75rem;
   color: var(--bs-muted);
   line-height: 1.4;
-}
-
-.drag-handle {
-  position: absolute;
-  top: 0.5rem;
-  right: 2.5rem;
-  width: 20px;
-  height: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--bs-secondary);
-  cursor: grab;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-  z-index: 10;
-}
-
-.tile-component:hover .drag-handle {
-  opacity: 1;
-}
-
-.drag-handle:hover {
-  color: var(--bs-primary);
-}
-
-.drag-handle:active {
-  cursor: grabbing;
 }
 
 .resize-handles {
@@ -826,38 +808,36 @@ onUnmounted(() => {
 /* Mobile responsiveness */
 @media (max-width: 767px) {
   .tile-header {
-    padding: 0.5rem;
-    min-height: 50px;
+    padding: 0.375rem 0.5rem;
+    min-height: 36px;
   }
-  
+
   .tile-title {
     font-size: 0.8rem;
   }
-  
+
   .tile-content {
     padding: 0.75rem;
   }
-  
+
   .tile-placeholder-icon {
     font-size: 1.5rem;
   }
-  
+
   .tile-controls {
     opacity: 1; /* Always show on mobile */
   }
-  
-  .drag-handle {
+
+  .drag-handle-inline {
     opacity: 1; /* Always show on mobile */
-    top: 0.25rem;
-    right: 2rem;
   }
-  
+
   .resize-handle-se {
     opacity: 1; /* Always show on mobile */
     width: 24px;
     height: 24px;
   }
-  
+
   .resize-handle-e,
   .resize-handle-s {
     display: none; /* Hide edge handles on mobile for simplicity */
@@ -866,7 +846,7 @@ onUnmounted(() => {
 
 /* Focus styles for accessibility */
 .tile-control-btn:focus,
-.drag-handle:focus,
+.drag-handle-inline:focus,
 .resize-handle:focus {
   outline: 2px solid var(--bs-primary);
   outline-offset: 2px;
@@ -877,7 +857,7 @@ onUnmounted(() => {
   .tile-component {
     border-width: 2px;
   }
-  
+
   .tile-component:hover {
     border-width: 3px;
   }
@@ -887,11 +867,11 @@ onUnmounted(() => {
 @media (prefers-reduced-motion: reduce) {
   .tile-component,
   .tile-controls,
-  .drag-handle,
+  .drag-handle-inline,
   .resize-handle-se {
     transition: none;
   }
-  
+
   .selection-indicator {
     animation: none;
   }
