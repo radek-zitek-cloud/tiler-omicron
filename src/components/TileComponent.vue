@@ -73,9 +73,21 @@
           Tile Content Area
         </p>
         <small class="tile-info">
-          {{ tile.width }}×{{ tile.height }} grid units<br>
+          {{ currentResizeWidth }}×{{ currentResizeHeight }} grid units<br>
           Position: ({{ tile.x }}, {{ tile.y }})
         </small>
+      </div>
+    </div>
+
+    <!-- Real-time Resize Indicator -->
+    <div
+      v-if="isResizing"
+      class="resize-indicator"
+    >
+      <div class="resize-indicator-content">
+        <strong>{{ currentResizeWidth }}×{{ currentResizeHeight }}</strong>
+        <br>
+        <small>{{ currentResizeWidth * currentResizeHeight }} units</small>
       </div>
     </div>
 
@@ -132,12 +144,14 @@
 import { computed, ref, onMounted, onUnmounted } from 'vue';
 import type { Tile } from '@/types/dashboard';
 import { DEFAULT_TILE_SIZE } from '@/types/dashboard';
+import { useDashboardStore } from '@/stores/dashboard';
 
 // Props
 interface Props {
   tile: Tile;
   gridColumns: number;
   gridGap: number;
+  rowHeight: number;
   isDragging?: boolean;
   isResizing?: boolean;
   isSelected?: boolean;
@@ -188,15 +202,48 @@ const tileClasses = computed(() => ({
 const tileStyle = computed(() => {
   const columnWidth = 100 / props.gridColumns;
 
+  // Use current resize dimensions when resizing, otherwise use tile dimensions
+  let currentWidth = props.tile.width;
+  let currentHeight = props.tile.height;
+
+  // Check if this tile is being resized and get current size from store
+  const dashboardStore = useDashboardStore();
+  if (props.isResizing && dashboardStore.resizeState.currentSize) {
+    currentWidth = dashboardStore.resizeState.currentSize.width;
+    currentHeight = dashboardStore.resizeState.currentSize.height;
+  }
+
   return {
-    gridColumn: `${props.tile.x + 1} / span ${props.tile.width}`,
-    gridRow: `${props.tile.y + 1} / span ${props.tile.height}`,
+    gridColumn: `${props.tile.x + 1} / span ${currentWidth}`,
+    gridRow: `${props.tile.y + 1} / span ${currentHeight}`,
     '--tile-x': props.tile.x,
     '--tile-y': props.tile.y,
-    '--tile-width': props.tile.width,
-    '--tile-height': props.tile.height,
+    '--tile-width': currentWidth,
+    '--tile-height': currentHeight,
     '--column-width': `${columnWidth}%`,
   };
+});
+
+/**
+ * Current resize width for real-time display
+ */
+const currentResizeWidth = computed(() => {
+  const dashboardStore = useDashboardStore();
+  if (props.isResizing && dashboardStore.resizeState.currentSize) {
+    return dashboardStore.resizeState.currentSize.width;
+  }
+  return props.tile.width;
+});
+
+/**
+ * Current resize height for real-time display
+ */
+const currentResizeHeight = computed(() => {
+  const dashboardStore = useDashboardStore();
+  if (props.isResizing && dashboardStore.resizeState.currentSize) {
+    return dashboardStore.resizeState.currentSize.height;
+  }
+  return props.tile.height;
 });
 
 const dragGhostStyle = computed(() => ({
@@ -223,11 +270,10 @@ function getGridPositionFromCoordinates(clientX: number, clientY: number): { x: 
   const relativeY = clientY - rect.top;
 
   const columnWidth = rect.width / props.gridColumns;
-  const rowHeight = 60; // Approximate row height - should match CSS
 
   return {
     x: Math.max(0, Math.min(props.gridColumns - props.tile.width, Math.floor(relativeX / columnWidth))),
-    y: Math.max(0, Math.floor(relativeY / rowHeight)),
+    y: Math.max(0, Math.floor(relativeY / props.rowHeight)),
   };
 }
 
@@ -499,7 +545,6 @@ function calculateAndEmitNewSize(deltaX: number, deltaY: number): void {
 
   const rect = container.getBoundingClientRect();
   const columnWidth = rect.width / props.gridColumns;
-  const rowHeight = 60; // Should match CSS
 
   let newWidth = resizeStartData.value.startWidth;
   let newHeight = resizeStartData.value.startHeight;
@@ -508,13 +553,13 @@ function calculateAndEmitNewSize(deltaX: number, deltaY: number): void {
   switch (resizeStartData.value.handle) {
     case 'se':
       newWidth = resizeStartData.value.startWidth + Math.round(deltaX / columnWidth);
-      newHeight = resizeStartData.value.startHeight + Math.round(deltaY / rowHeight);
+      newHeight = resizeStartData.value.startHeight + Math.round(deltaY / props.rowHeight);
       break;
     case 'e':
       newWidth = resizeStartData.value.startWidth + Math.round(deltaX / columnWidth);
       break;
     case 's':
-      newHeight = resizeStartData.value.startHeight + Math.round(deltaY / rowHeight);
+      newHeight = resizeStartData.value.startHeight + Math.round(deltaY / props.rowHeight);
       break;
   }
 
@@ -600,6 +645,12 @@ onUnmounted(() => {
   z-index: 1000;
   cursor: grabbing;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.tile-component.tile-resizing {
+  border-color: var(--bs-success);
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+  transform: scale(1.005);
 }
 
 .tile-component.tile-resizing {
@@ -873,5 +924,35 @@ onUnmounted(() => {
   .selection-indicator {
     animation: none;
   }
+}
+
+/* Real-time resize indicator */
+.resize-indicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(40, 167, 69, 0.95);
+  color: white;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 0.875rem;
+  text-align: center;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  pointer-events: none;
+  min-width: 80px;
+  backdrop-filter: blur(2px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.resize-indicator-content {
+  line-height: 1.2;
+}
+
+.resize-indicator small {
+  opacity: 0.9;
+  font-size: 0.75rem;
 }
 </style>

@@ -23,24 +23,6 @@
         </h1>
 
         <div class="dashboard-controls">
-          <button
-            class="btn btn-primary btn-sm me-2"
-            @click="handleAddTile"
-            :disabled="isOperationInProgress"
-          >
-            <i class="fas fa-plus me-1" aria-hidden="true"></i>
-            Add Tile
-          </button>
-
-          <button
-            class="btn btn-outline-secondary btn-sm me-2"
-            @click="handleClearDashboard"
-            :disabled="isOperationInProgress || dashboardStore.tiles.length === 0"
-          >
-            <i class="fas fa-trash me-1" aria-hidden="true"></i>
-            Clear All
-          </button>
-
           <div class="dropdown">
             <button
               class="btn btn-outline-secondary btn-sm dropdown-toggle"
@@ -48,10 +30,33 @@
               data-bs-toggle="dropdown"
               aria-expanded="false"
             >
-              <i class="fas fa-cog me-1" aria-hidden="true"></i>
-              Options
+              <i class="fas fa-ellipsis-v me-1" aria-hidden="true"></i>
+              Actions
             </button>
             <ul class="dropdown-menu">
+              <li>
+                <a
+                  class="dropdown-item"
+                  href="#"
+                  @click.prevent="handleAddTile"
+                  :class="{ 'disabled': isOperationInProgress }"
+                >
+                  <i class="fas fa-plus me-1" aria-hidden="true"></i>
+                  Add Tile
+                </a>
+              </li>
+              <li>
+                <a
+                  class="dropdown-item"
+                  href="#"
+                  @click.prevent="handleClearDashboard"
+                  :class="{ 'disabled': isOperationInProgress || dashboardStore.tiles.length === 0 }"
+                >
+                  <i class="fas fa-trash me-1" aria-hidden="true"></i>
+                  Clear All
+                </a>
+              </li>
+              <li><hr class="dropdown-divider"></li>
               <li>
                 <a class="dropdown-item" href="#" @click.prevent="exportLayout">
                   <i class="fas fa-download me-1" aria-hidden="true"></i>
@@ -122,6 +127,7 @@
         :tile="tile"
         :grid-columns="dashboardStore.gridColumns"
         :grid-gap="dashboardStore.gridConfig.gap"
+        :row-height="dashboardStore.gridConfig.rowHeight"
         :is-dragging="dashboardStore.dragState.draggedTileId === tile.id"
         :is-resizing="dashboardStore.resizeState.resizedTileId === tile.id"
         @tile-delete="handleTileDelete"
@@ -149,7 +155,7 @@
           <i class="fas fa-th-large empty-state-icon" aria-hidden="true"></i>
           <h3 class="empty-state-title">No tiles yet</h3>
           <p class="empty-state-text">
-            Start building your dashboard by adding your first tile.
+            Start building your dashboard by adding your first tile using the Actions menu above.
           </p>
           <button
             class="btn btn-primary btn-lg"
@@ -254,6 +260,7 @@ const gridContainerStyle = computed(() => ({
   '--grid-columns': dashboardStore.gridColumns,
   '--grid-gap': `${dashboardStore.gridConfig.gap}px`,
   '--container-padding': `${dashboardStore.gridConfig.padding}px`,
+  '--row-height': `${dashboardStore.gridConfig.rowHeight}px`,
 }));
 
 const gridLinesStyle = computed(() => ({
@@ -265,9 +272,9 @@ const dropZoneStyle = computed(() => {
 
   return {
     left: `${(dropZone.value.x / dashboardStore.gridColumns) * 100}%`,
-    top: `${dropZone.value.y * 60}px`, // Approximate row height
+    top: `${dropZone.value.y * dashboardStore.gridConfig.rowHeight}px`,
     width: `${(dropZone.value.width / dashboardStore.gridColumns) * 100}%`,
-    height: `${dropZone.value.height * 60}px`,
+    height: `${dropZone.value.height * dashboardStore.gridConfig.rowHeight}px`,
   };
 });
 
@@ -455,7 +462,7 @@ function handleGridDrop(event: DragEvent): void {
   if (!rect) return;
 
   const x = Math.floor(((event.clientX - rect.left) / rect.width) * dashboardStore.gridColumns);
-  const y = Math.floor((event.clientY - rect.top) / 60); // Approximate row height
+  const y = Math.floor((event.clientY - rect.top) / dashboardStore.gridConfig.rowHeight);
 
   handleDragMove({ x, y });
   handleDragEnd(true);
@@ -774,6 +781,12 @@ watch(
   font-size: 0.875rem;
 }
 
+.dropdown-item.disabled {
+  color: var(--bs-secondary);
+  pointer-events: none;
+  background-color: transparent;
+}
+
 .dashboard-status-compact {
   display: flex;
   align-items: center;
@@ -786,6 +799,7 @@ watch(
   min-height: calc(100vh - 120px);
   display: grid;
   grid-template-columns: repeat(var(--grid-columns), 1fr);
+  grid-auto-rows: var(--row-height);
   gap: var(--grid-gap);
   transition: all 0.2s ease;
 }

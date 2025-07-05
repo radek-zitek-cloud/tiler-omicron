@@ -96,6 +96,9 @@ export interface GridConfig {
 
   /** Container padding in pixels */
   padding: number;
+
+  /** Row height in pixels */
+  rowHeight: number;
 }
 
 /**
@@ -192,6 +195,7 @@ export const DEFAULT_GRID_CONFIG: GridConfig = {
   smallMobile: 1,
   gap: 2,
   padding: 16,
+  rowHeight: 60,
 };
 
 /**
