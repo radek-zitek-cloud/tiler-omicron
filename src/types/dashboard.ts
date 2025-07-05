@@ -41,6 +41,9 @@ export interface Tile {
   /** Maximum height constraint (optional) */
   maxHeight?: number;
 
+  /** Content configuration for the tile */
+  content?: TileContent;
+
   /** Timestamp when tile was created */
   created: Date;
 
@@ -216,3 +219,91 @@ export const BREAKPOINTS = {
   mobile: 768,
   tablet: 1200,
 } as const;
+
+/**
+ * Available tile content component types
+ */
+export type TileContentType = 'equity-quote' | 'placeholder';
+
+/**
+ * Base interface for tile content configuration
+ */
+export interface BaseTileContent {
+  /** Type of content component */
+  type: TileContentType;
+  /** Display name for the content type */
+  displayName: string;
+  /** Whether content should refresh automatically */
+  autoRefresh?: boolean;
+  /** Refresh interval in seconds (default: 60) */
+  refreshInterval?: number;
+}
+
+/**
+ * Configuration for equity quote tile content
+ */
+export interface EquityQuoteContent extends BaseTileContent {
+  type: 'equity-quote';
+  /** Stock symbol (e.g., 'AAPL', 'GOOGL') */
+  symbol: string;
+  /** Display format preferences */
+  displayOptions?: {
+    showChange?: boolean;
+    showPercentChange?: boolean;
+    showVolume?: boolean;
+    showChart?: boolean;
+  };
+}
+
+/**
+ * Configuration for placeholder tile content
+ */
+export interface PlaceholderContent extends BaseTileContent {
+  type: 'placeholder';
+  /** Custom message to display */
+  message?: string;
+}
+
+/**
+ * Union type for all tile content configurations
+ */
+export type TileContent = EquityQuoteContent | PlaceholderContent;
+
+/**
+ * Registry of available tile content types with metadata
+ */
+export const TILE_CONTENT_TYPES: Record<TileContentType, {
+  displayName: string;
+  description: string;
+  defaultConfig: Partial<TileContent>;
+  requiredFields: string[];
+}> = {
+  'equity-quote': {
+    displayName: 'Stock Quote',
+    description: 'Display real-time stock price and market data',
+    defaultConfig: {
+      type: 'equity-quote',
+      displayName: 'Stock Quote',
+      autoRefresh: true,
+      refreshInterval: 60,
+      symbol: 'AAPL',
+      displayOptions: {
+        showChange: true,
+        showPercentChange: true,
+        showVolume: true,
+        showChart: false,
+      },
+    },
+    requiredFields: ['symbol'],
+  },
+  'placeholder': {
+    displayName: 'Placeholder',
+    description: 'Simple placeholder content for testing',
+    defaultConfig: {
+      type: 'placeholder',
+      displayName: 'Placeholder',
+      message: 'Content coming soon...',
+    },
+    requiredFields: [],
+  },
+};

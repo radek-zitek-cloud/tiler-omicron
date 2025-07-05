@@ -131,6 +131,7 @@
         :is-dragging="dashboardStore.dragState.draggedTileId === tile.id"
         :is-resizing="dashboardStore.resizeState.resizedTileId === tile.id"
         @tile-delete="handleTileDelete"
+        @tile-edit="handleTileEdit"
         @drag-start="handleDragStart"
         @drag-move="handleDragMove"
         @drag-end="handleDragEnd"
@@ -228,7 +229,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useDashboardStore } from '@/stores/dashboard';
-import type { DashboardLayout, Tile } from '@/types/dashboard';
+import type { DashboardLayout, Tile, TileContent } from '@/types/dashboard';
 import TileComponent from './TileComponent.vue';
 
 // Store
@@ -382,6 +383,63 @@ function handleTileDelete(tileId: string): void {
       }
     }
   );
+}
+
+/**
+ * Handles tile editing
+ * @param {string} tileId - ID of tile to edit
+ * @param {object} changes - Changes to apply to the tile
+ */
+function handleTileEdit(tileId: string, changes?: { title?: string; content?: object | null }): void {
+  if (!changes) {
+    // If no changes provided, just show a message (for backwards compatibility)
+    showOperationMessage('Tile edit dialog opened', 'info');
+    return;
+  }
+
+  const tile = dashboardStore.tiles.find(t => t.id === tileId);
+  if (!tile) {
+    showOperationMessage('Tile not found', 'error');
+    return;
+  }
+
+  try {
+    // Prepare update object with proper types
+    const updateData: Partial<Tile> = {};
+
+    // Update the tile with the changes
+    if (changes.title !== undefined) {
+      updateData.title = changes.title;
+    }
+
+    if (changes.content !== undefined) {
+      // Type cast the content properly - null means remove content, object means set content
+      updateData.content = changes.content as TileContent | undefined;
+    }
+
+    if (Object.keys(updateData).length > 0) {
+      if (dashboardStore.updateTile(tileId, updateData)) {
+        const changesList = [];
+        if (changes.title !== undefined) {
+          changesList.push(`title to "${changes.title}"`);
+        }
+        if (changes.content !== undefined) {
+          if (changes.content) {
+            const contentType = (changes.content as { type?: string }).type || 'unknown';
+            changesList.push(`content to ${contentType}`);
+          } else {
+            changesList.push('content removed');
+          }
+        }
+        showOperationMessage(`Updated tile: ${changesList.join(', ')}`);
+      } else {
+        showOperationMessage('Failed to update tile', 'error');
+      }
+    }
+  } catch (error) {
+    console.error('Failed to update tile:', error);
+    showOperationMessage('Failed to update tile', 'error');
+  }
 }
 
 /**

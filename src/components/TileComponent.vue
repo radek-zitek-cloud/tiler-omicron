@@ -47,8 +47,12 @@
           class="btn btn-outline-secondary btn-sm tile-control-btn"
           type="button"
           @click="handleEdit"
+          @mousedown.stop
+          @touchstart.stop
           :title="'Edit ' + tile.title"
           aria-label="Edit tile"
+          :data-bs-toggle="'modal'"
+          :data-bs-target="`#editModal-${tile.id}`"
         >
           <i class="fas fa-edit" aria-hidden="true"></i>
         </button>
@@ -57,6 +61,8 @@
           class="btn btn-outline-danger btn-sm tile-control-btn"
           type="button"
           @click="handleDelete"
+          @mousedown.stop
+          @touchstart.stop
           :title="'Delete ' + tile.title"
           aria-label="Delete tile"
         >
@@ -67,7 +73,16 @@
 
     <!-- Tile Content -->
     <div class="tile-content">
-      <div class="tile-placeholder">
+      <!-- Dynamic Content Renderer -->
+      <TileContentRenderer
+        v-if="tile.content"
+        :content="tile.content"
+        :tile-width="currentResizeWidth"
+        :tile-height="currentResizeHeight"
+      />
+
+      <!-- Default Placeholder -->
+      <div v-else class="tile-placeholder">
         <i class="fas fa-cube tile-placeholder-icon" aria-hidden="true"></i>
         <p class="tile-placeholder-text">
           Tile Content Area
@@ -137,14 +152,238 @@
       class="drag-ghost"
       :style="dragGhostStyle"
     ></div>
+
+    <!-- Edit Modal -->
+    <div
+      class="modal fade"
+      :id="`editModal-${tile.id}`"
+      ref="editModal"
+      tabindex="-1"
+      :aria-labelledby="`editModalLabel-${tile.id}`"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog">
+        <div class="modal-content" @click.stop>
+          <div class="modal-header">
+            <h5 class="modal-title" :id="`editModalLabel-${tile.id}`">
+              Edit Tile Properties
+            </h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <form @submit.prevent="handleSaveEdit">
+              <div class="mb-3">
+                <label :for="`tileTitle-${tile.id}`" class="form-label">
+                  <strong>Title</strong>
+                </label>
+                <input
+                  type="text"
+                  class="form-control"
+                  :id="`tileTitle-${tile.id}`"
+                  v-model="editTitle"
+                  :placeholder="tile.title"
+                  maxlength="100"
+                  required
+                />
+                <div class="form-text">
+                  Enter a descriptive title for this tile (max 100 characters)
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label :for="`contentType-${tile.id}`" class="form-label">
+                  <strong>Content Type</strong>
+                </label>
+
+                <select
+                  class="form-select"
+                  :id="`contentType-${tile.id}`"
+                  v-model="editContentType"
+                  @change="handleContentTypeChange"
+                >
+                  <option value="">No Content (Placeholder)</option>
+                  <option
+                    v-for="(typeInfo, type) in contentTypes"
+                    :key="type"
+                    :value="type"
+                  >
+                    {{ typeInfo.displayName }}
+                  </option>
+                </select>
+                <div class="form-text">
+                  {{ getContentTypeDescription(editContentType) }}
+                </div>
+              </div>
+
+              <!-- Content Configuration -->
+              <div v-if="editContentType" class="mb-3">
+                <label class="form-label">
+                  <strong>Content Configuration</strong>
+                </label>
+
+                <!-- Equity Quote Configuration -->
+                <div v-if="editContentType === 'equity-quote'" class="content-config">
+                  <div class="mb-2">
+                    <label :for="`symbol-${tile.id}`" class="form-label">Stock Symbol</label>
+                    <input
+                      type="text"
+                      class="form-control"
+                      :id="`symbol-${tile.id}`"
+                      v-model="editContentConfig.symbol"
+                      placeholder="e.g., AAPL, GOOGL, MSFT"
+                      maxlength="10"
+                      style="text-transform: uppercase;"
+                      required
+                    />
+                  </div>
+
+                  <div class="row">
+                    <div class="col-sm-6">
+                      <div class="form-check">
+                        <input
+                          class="form-check-input"
+                          type="checkbox"
+                          :id="`showChange-${tile.id}`"
+                          v-model="editContentConfig.displayOptions.showChange"
+                        />
+                        <label class="form-check-label" :for="`showChange-${tile.id}`">
+                          Show Price Change
+                        </label>
+                      </div>
+                    </div>
+                    <div class="col-sm-6">
+                      <div class="form-check">
+                        <input
+                          class="form-check-input"
+                          type="checkbox"
+                          :id="`showPercent-${tile.id}`"
+                          v-model="editContentConfig.displayOptions.showPercentChange"
+                        />
+                        <label class="form-check-label" :for="`showPercent-${tile.id}`">
+                          Show Percent Change
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="row mt-2">
+                    <div class="col-sm-6">
+                      <div class="form-check">
+                        <input
+                          class="form-check-input"
+                          type="checkbox"
+                          :id="`showVolume-${tile.id}`"
+                          v-model="editContentConfig.displayOptions.showVolume"
+                        />
+                        <label class="form-check-label" :for="`showVolume-${tile.id}`">
+                          Show Volume
+                        </label>
+                      </div>
+                    </div>
+                    <div class="col-sm-6">
+                      <div class="form-check">
+                        <input
+                          class="form-check-input"
+                          type="checkbox"
+                          :id="`autoRefresh-${tile.id}`"
+                          v-model="editContentConfig.autoRefresh"
+                        />
+                        <label class="form-check-label" :for="`autoRefresh-${tile.id}`">
+                          Auto Refresh
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Placeholder Configuration -->
+                <div v-else-if="editContentType === 'placeholder'" class="content-config">
+                  <div class="mb-2">
+                    <label :for="`message-${tile.id}`" class="form-label">Custom Message</label>
+                    <textarea
+                      class="form-control"
+                      :id="`message-${tile.id}`"
+                      v-model="editContentConfig.message"
+                      placeholder="Enter custom message..."
+                      rows="3"
+                      maxlength="200"
+                    ></textarea>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label">
+                  <strong>Tile Information</strong>
+                </label>
+                <div class="tile-info-display">
+                  <div class="row">
+                    <div class="col-sm-6">
+                      <small class="text-muted">
+                        <i class="fas fa-expand-arrows-alt me-1"></i>
+                        Size: {{ tile.width }}×{{ tile.height }} units
+                      </small>
+                    </div>
+                    <div class="col-sm-6">
+                      <small class="text-muted">
+                        <i class="fas fa-map-marker-alt me-1"></i>
+                        Position: ({{ tile.x }}, {{ tile.y }})
+                      </small>
+                    </div>
+                  </div>
+                  <div class="row mt-1">
+                    <div class="col-sm-6">
+                      <small class="text-muted">
+                        <i class="fas fa-calendar-plus me-1"></i>
+                        Created: {{ formatDate(tile.created) }}
+                      </small>
+                    </div>
+                    <div class="col-sm-6">
+                      <small class="text-muted">
+                        <i class="fas fa-edit me-1"></i>
+                        Modified: {{ formatDate(tile.modified) }}
+                      </small>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-bs-dismiss="modal"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              class="btn btn-primary"
+              @click="handleSaveEdit"
+              :disabled="!isEditValid"
+            >
+              <i class="fas fa-save me-1"></i>
+              Save Changes
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted } from 'vue';
 import type { Tile } from '@/types/dashboard';
-import { DEFAULT_TILE_SIZE } from '@/types/dashboard';
+import { DEFAULT_TILE_SIZE, TILE_CONTENT_TYPES, type TileContentType } from '@/types/dashboard';
 import { useDashboardStore } from '@/stores/dashboard';
+import TileContentRenderer from './tile-content/TileContentRenderer.vue';
 
 // Props
 interface Props {
@@ -166,7 +405,7 @@ const props = withDefaults(defineProps<Props>(), {
 // Emits
 interface Emits {
   tileDelete: [tileId: string];
-  tileEdit: [tileId: string];
+  tileEdit: [tileId: string, changes?: { title?: string; content?: object | null }];
   dragStart: [tileId: string];
   dragMove: [position: { x: number; y: number }];
   dragEnd: [commit: boolean];
@@ -179,6 +418,7 @@ const emit = defineEmits<Emits>();
 
 // Refs
 const tileElement = ref<HTMLElement>();
+const editModal = ref<HTMLElement>();
 
 // State
 const isMouseDown = ref(false);
@@ -190,6 +430,31 @@ const resizeStartData = ref<{
   startWidth: number;
   startHeight: number;
 } | null>(null);
+
+// Edit state
+const editTitle = ref<string>('');
+const editContentType = ref<TileContentType | ''>('');
+const editContentConfig = ref<{
+  symbol?: string;
+  message?: string;
+  autoRefresh?: boolean;
+  displayOptions: {
+    showChange: boolean;
+    showPercentChange: boolean;
+    showVolume: boolean;
+    showChart: boolean;
+  };
+}>({
+  displayOptions: {
+    showChange: true,
+    showPercentChange: true,
+    showVolume: true,
+    showChart: false,
+  },
+});
+
+// Content types registry
+const contentTypes = TILE_CONTENT_TYPES;
 
 // Computed properties
 const tileClasses = computed(() => ({
@@ -246,6 +511,13 @@ const currentResizeHeight = computed(() => {
   return props.tile.height;
 });
 
+/**
+ * Validates if the edit form is valid
+ */
+const isEditValid = computed(() => {
+  return editTitle.value.trim().length > 0 && editTitle.value.trim().length <= 100;
+});
+
 const dragGhostStyle = computed(() => ({
   position: 'fixed' as const,
   pointerEvents: 'none' as const,
@@ -287,12 +559,186 @@ function handleDelete(): void {
 }
 
 /**
- * Handles tile editing (placeholder for future content editing)
+ * Handles tile editing (opens edit modal)
  */
 function handleEdit(): void {
-  emit('tileEdit', props.tile.id);
-  // For now, just show an alert - in the future this would open an edit modal
-  alert(`Edit functionality for "${props.tile.title}" - Coming in Phase 2!`);
+  // Initialize edit form with current values
+  editTitle.value = props.tile.title;
+
+  // Initialize content type and configuration from current tile
+  if (props.tile.content) {
+    editContentType.value = props.tile.content.type;
+
+    // Initialize content configuration based on content type
+    if (props.tile.content.type === 'equity-quote') {
+      editContentConfig.value = {
+        symbol: props.tile.content.symbol || 'AAPL',
+        autoRefresh: props.tile.content.autoRefresh || true,
+        displayOptions: {
+          showChange: props.tile.content.displayOptions?.showChange ?? true,
+          showPercentChange: props.tile.content.displayOptions?.showPercentChange ?? true,
+          showVolume: props.tile.content.displayOptions?.showVolume ?? true,
+          showChart: props.tile.content.displayOptions?.showChart ?? false,
+        },
+      };
+    } else if (props.tile.content.type === 'placeholder') {
+      editContentConfig.value = {
+        message: props.tile.content.message || 'Content coming soon...',
+        displayOptions: {
+          showChange: true,
+          showPercentChange: true,
+          showVolume: true,
+          showChart: false,
+        },
+      };
+    }
+  } else {
+    // No content - initialize as empty
+    editContentType.value = '';
+    editContentConfig.value = {
+      displayOptions: {
+        showChange: true,
+        showPercentChange: true,
+        showVolume: true,
+        showChart: false,
+      },
+    };
+  }
+
+  // The modal will be shown by Bootstrap's data attributes
+  // No need for programmatic modal handling
+}
+
+/**
+ * Handles saving edit changes
+ */
+function handleSaveEdit(): void {
+  if (!isEditValid.value) return;
+
+  const trimmedTitle = editTitle.value.trim();
+
+  // Prepare the changes object
+  const changes: { title?: string; content?: object | null } = {};
+
+  // Check if title changed
+  if (trimmedTitle !== props.tile.title) {
+    changes.title = trimmedTitle;
+  }
+
+  // Prepare content based on selected type
+  let newContent = null;
+  if (editContentType.value) {
+    if (editContentType.value === 'equity-quote') {
+      newContent = {
+        type: 'equity-quote' as const,
+        displayName: 'Stock Quote',
+        symbol: editContentConfig.value.symbol || 'AAPL',
+        autoRefresh: editContentConfig.value.autoRefresh ?? true,
+        refreshInterval: 60,
+        displayOptions: {
+          showChange: editContentConfig.value.displayOptions?.showChange ?? true,
+          showPercentChange: editContentConfig.value.displayOptions?.showPercentChange ?? true,
+          showVolume: editContentConfig.value.displayOptions?.showVolume ?? true,
+          showChart: editContentConfig.value.displayOptions?.showChart ?? false,
+        },
+      };
+    } else if (editContentType.value === 'placeholder') {
+      newContent = {
+        type: 'placeholder' as const,
+        displayName: 'Placeholder',
+        message: editContentConfig.value.message || 'Content coming soon...',
+      };
+    }
+  }
+
+  // Check if content changed
+  const currentContentJson = JSON.stringify(props.tile.content);
+  const newContentJson = JSON.stringify(newContent);
+  if (currentContentJson !== newContentJson) {
+    changes.content = newContent;
+  }
+
+  // If no changes, just return
+  if (Object.keys(changes).length === 0) {
+    return;
+  }
+
+  // Emit the tile edit event with all changes
+  emit('tileEdit', props.tile.id, changes);
+
+  // Close modal using Bootstrap's programmatic API
+  if (editModal.value) {
+    try {
+      const windowWithBootstrap = window as {
+        bootstrap?: {
+          Modal: {
+            getInstance(element: HTMLElement): { hide(): void } | null;
+          };
+        };
+      };
+      if (windowWithBootstrap.bootstrap && windowWithBootstrap.bootstrap.Modal) {
+        const modalInstance = windowWithBootstrap.bootstrap.Modal.getInstance(editModal.value);
+        if (modalInstance) {
+          modalInstance.hide();
+        }
+      }
+    } catch (error) {
+      console.error('Error hiding modal:', error);
+    }
+  }
+}
+
+/**
+ * Formats a date for display
+ * @param {Date} date - Date to format
+ * @returns {string} Formatted date string
+ */
+function formatDate(date: Date): string {
+  return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+/**
+ * Gets description for a content type
+ * @param {string} type - Content type
+ * @returns {string} Description
+ */
+function getContentTypeDescription(type: string): string {
+  if (!type) return 'Default placeholder content will be displayed';
+  return contentTypes[type as TileContentType]?.description || 'Unknown content type';
+}
+
+/**
+ * Handles content type change
+ */
+function handleContentTypeChange(): void {
+  // Initialize default configuration for the selected content type
+  if (!editContentType.value) {
+    editContentConfig.value = {
+      displayOptions: {
+        showChange: true,
+        showPercentChange: true,
+        showVolume: true,
+        showChart: false,
+      },
+    };
+    return;
+  }
+
+  const defaultConfig = contentTypes[editContentType.value]?.defaultConfig || {};
+  const configDisplayOptions = defaultConfig.type === 'equity-quote' ?
+    (defaultConfig as { displayOptions?: typeof editContentConfig.value.displayOptions }).displayOptions :
+    undefined;
+
+  editContentConfig.value = {
+    ...defaultConfig,
+    displayOptions: {
+      showChange: true,
+      showPercentChange: true,
+      showVolume: true,
+      showChart: false,
+      ...configDisplayOptions,
+    },
+  };
 }
 
 // Drag and drop handlers
@@ -368,9 +814,14 @@ function startTouchDragFromHandle(event: TouchEvent): void {
  * @param {MouseEvent} event - Mouse event
  */
 function handleMouseDown(event: MouseEvent): void {
-  // Only start drag if clicking on the tile content, not controls
+  // Only start drag if clicking on the tile content, not controls or interactive elements
   if ((event.target as HTMLElement).closest('.tile-controls') ||
-      (event.target as HTMLElement).closest('.resize-handle')) {
+      (event.target as HTMLElement).closest('.resize-handle') ||
+      (event.target as HTMLElement).closest('button') ||
+      (event.target as HTMLElement).closest('input') ||
+      (event.target as HTMLElement).closest('select') ||
+      (event.target as HTMLElement).closest('textarea') ||
+      (event.target as HTMLElement).closest('.modal')) {
     return;
   }
 
@@ -382,9 +833,14 @@ function handleMouseDown(event: MouseEvent): void {
  * @param {TouchEvent} event - Touch event
  */
 function handleTouchStart(event: TouchEvent): void {
-  // Only start drag if touching the tile content, not controls
+  // Only start drag if touching the tile content, not controls or interactive elements
   if ((event.target as HTMLElement).closest('.tile-controls') ||
-      (event.target as HTMLElement).closest('.resize-handle')) {
+      (event.target as HTMLElement).closest('.resize-handle') ||
+      (event.target as HTMLElement).closest('button') ||
+      (event.target as HTMLElement).closest('input') ||
+      (event.target as HTMLElement).closest('select') ||
+      (event.target as HTMLElement).closest('textarea') ||
+      (event.target as HTMLElement).closest('.modal')) {
     return;
   }
 
@@ -607,6 +1063,27 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  // Clean up modal instance
+  if (editModal.value) {
+    try {
+      const windowWithBootstrap = window as {
+        bootstrap?: {
+          Modal: {
+            getInstance(element: HTMLElement): { dispose(): void } | null;
+          };
+        };
+      };
+      if (windowWithBootstrap.bootstrap && windowWithBootstrap.bootstrap.Modal) {
+        const modalInstance = windowWithBootstrap.bootstrap.Modal.getInstance(editModal.value);
+        if (modalInstance) {
+          modalInstance.dispose();
+        }
+      }
+    } catch (error) {
+      console.error('Error disposing modal:', error);
+    }
+  }
+
   // Clean up event listeners
   document.removeEventListener('mousemove', handleDragMove);
   document.removeEventListener('mouseup', handleDragStop);
@@ -954,5 +1431,51 @@ onUnmounted(() => {
 .resize-indicator small {
   opacity: 0.9;
   font-size: 0.75rem;
+}
+
+/* Edit modal styling */
+.modal {
+  z-index: 1055 !important; /* Ensure modal is above everything */
+}
+
+.modal-backdrop {
+  z-index: 1050 !important; /* Backdrop below modal but above content */
+}
+
+.modal-dialog {
+  pointer-events: auto !important;
+}
+
+.modal-content {
+  pointer-events: auto !important;
+  position: relative;
+  z-index: 1;
+}
+
+.tile-info-display {
+  background-color: var(--bs-light);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 6px;
+  padding: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.tile-info-display .row {
+  margin: 0;
+}
+
+.tile-info-display .col-sm-6 {
+  padding: 0.125rem 0.5rem;
+}
+
+.tile-info-display small {
+  display: flex;
+  align-items: center;
+  font-size: 0.8rem;
+}
+
+.tile-info-display .fas {
+  width: 14px;
+  opacity: 0.7;
 }
 </style>
