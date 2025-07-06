@@ -148,7 +148,7 @@ export interface ResizeState {
 /**
  * Available tile operation types.
  */
-export type TileOperation = 'create' | 'delete' | 'move' | 'resize';
+export type TileOperation = 'create' | 'delete' | 'move' | 'resize' | 'import';
 
 /**
  * Event payload for tile operations.

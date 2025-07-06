@@ -565,6 +565,53 @@ export const useDashboardStore = defineStore('dashboard', () => {
     });
   }
 
+  /**
+   * Imports a layout from external data
+   * @param {object} layoutData - Layout data to import
+   */
+  function importLayout(layoutData: any): void {
+    try {
+      // Validate and sanitize imported data
+      if (!layoutData || !Array.isArray(layoutData.tiles)) {
+        throw new Error('Invalid layout data format');
+      }
+
+      const now = new Date();
+      
+      // Update current layout with imported data
+      currentLayout.value = {
+        id: layoutData.id || 'imported',
+        name: layoutData.name || 'Imported Dashboard',
+        tiles: layoutData.tiles.map((tile: any) => ({
+          ...tile,
+          id: tile.id || generateTileId(),
+          created: tile.created ? new Date(tile.created) : now,
+          modified: tile.modified ? new Date(tile.modified) : now,
+        })),
+        gridColumns: layoutData.gridColumns || DEFAULT_GRID_CONFIG.desktop,
+        created: layoutData.created ? new Date(layoutData.created) : now,
+        modified: now,
+      };
+
+      // Update grid configuration if provided
+      if (layoutData.gridConfig) {
+        gridConfig.value = { ...gridConfig.value, ...layoutData.gridConfig };
+      }
+
+      saveLayout();
+      
+      logOperation({
+        operation: 'import',
+        tileId: 'layout',
+        timestamp: now,
+        data: { tilesImported: currentLayout.value.tiles.length },
+      });
+    } catch (error) {
+      console.error('Failed to import layout:', error);
+      throw new Error('Failed to import layout: ' + (error as Error).message);
+    }
+  }
+
   // Watch for layout changes and auto-save
   watch(
     () => currentLayout.value,
@@ -607,6 +654,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     loadLayoutData,
     updateBreakpoint,
     clearDashboard,
+    importLayout,
     findNextAvailablePosition,
     hasPositionConflicts,
   };

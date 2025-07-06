@@ -156,13 +156,13 @@
                       <strong>Use Proxy:</strong> {{ useProxy ? 'Yes' : 'No' }}
                     </li>
                     <li class="list-group-item">
-                      <strong>Primary Proxy:</strong> {{ googleFinanceService.getConfig().proxyUrl }}
+                      <strong>Primary Proxy:</strong> {{ googleFinanceService.getConfig().network.proxyUrl || 'Not configured' }}
                     </li>
                     <li class="list-group-item">
-                      <strong>Fallback Proxies:</strong> {{ googleFinanceService.getConfig().fallbackProxies?.length || 0 }} available
+                      <strong>Fallback Proxies:</strong> {{ googleFinanceService.getConfig().network.fallbackProxies?.length || 0 }} available
                     </li>
                     <li class="list-group-item">
-                      <strong>Timeout:</strong> {{ googleFinanceService.getConfig().timeout }}ms
+                      <strong>Timeout:</strong> {{ googleFinanceService.getConfig().network.timeout || 30000 }}ms
                     </li>
                   </ul>
 
@@ -263,9 +263,9 @@
                         <td><strong>P/E Ratio:</strong></td>
                         <td>{{ quoteData.peRatio.toFixed(2) }}</td>
                       </tr>
-                      <tr v-if="quoteData.dividendYield">
-                        <td><strong>Dividend Yield:</strong></td>
-                        <td>{{ quoteData.dividendYield.toFixed(2) }}%</td>
+                      <tr v-if="quoteData.peRatio">
+                        <td><strong>P/E Ratio:</strong></td>
+                        <td>{{ quoteData.peRatio.toFixed(2) }}</td>
                       </tr>
                       <tr v-if="quoteData.marketStatus">
                         <td><strong>Market Status:</strong></td>
@@ -366,13 +366,18 @@ const showRawData = ref<boolean>(false);
 
 // Google Finance service instance
 const googleFinanceService = new GoogleFinanceService({
-  useProxy: true,
-  timeout: 15000, // Increased timeout for proxy requests
-  proxyUrl: 'https://corsproxy.io/?',
-  fallbackProxies: [
-    'https://api.codetabs.com/v1/proxy?quest=',
-    'https://thingproxy.freeboard.io/fetch/',
-  ],
+  useMockData: false,
+  enableMockFallback: true,
+  network: {
+    useProxy: true,
+    timeout: 15000, // Increased timeout for proxy requests
+    proxyUrl: 'https://corsproxy.io/?',
+    fallbackProxies: [
+      'https://api.codetabs.com/v1/proxy?quest=',
+      'https://thingproxy.freeboard.io/fetch/',
+      'https://api.allorigins.win/raw?url=',
+    ],
+  },
 });
 
 /**
@@ -385,7 +390,9 @@ async function fetchQuote(): Promise<void> {
   }
 
   // Update service configuration
-  googleFinanceService.updateConfig({ useProxy: useProxy.value });
+  googleFinanceService.updateConfig({ 
+    network: { useProxy: useProxy.value } 
+  });
 
   isLoading.value = true;
   error.value = '';
