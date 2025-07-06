@@ -51,6 +51,7 @@ const props = defineProps<Props>();
 const contentComponents = {
   'equity-quote': defineAsyncComponent(() => import('./EquityQuoteContent.vue')),
   'placeholder': defineAsyncComponent(() => import('./PlaceholderContent.vue')),
+  'news': defineAsyncComponent(() => import('./NewsContent.vue')),
 };
 
 /**

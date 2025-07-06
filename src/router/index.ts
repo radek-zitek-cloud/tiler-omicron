@@ -1,6 +1,6 @@
 /**
  * Router configuration for Dashboard Tiling System
- * 
+ *
  * Defines the application routes and navigation structure.
  * The main route is the dashboard view where users can
  * create and manage their tile layouts.
@@ -27,6 +27,15 @@ const router = createRouter({
       component: () => import('../views/AboutView.vue'),
       meta: {
         title: 'About - Dashboard Tiling System'
+      }
+    },
+    {
+      path: '/google-finance-test',
+      name: 'google-finance-test',
+      // Route level code-splitting for testing component
+      component: () => import('../components/GoogleFinanceTest.vue'),
+      meta: {
+        title: 'Google Finance Test - Dashboard Tiling System'
       }
     },
     // Redirect any unknown routes to the dashboard

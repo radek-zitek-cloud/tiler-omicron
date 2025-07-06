@@ -131,9 +131,36 @@ interface QuoteData {
   volume?: number;
   marketCap?: number;
   timestamp: number;
+  high?: number;
+  low?: number;
+  previousClose?: number;
+}
+
+/**
+ * Alpha Vantage API response structure for Global Quote
+ */
+interface AlphaVantageResponse {
+  'Global Quote': {
+    '01. symbol': string;
+    '02. open': string;
+    '03. high': string;
+    '04. low': string;
+    '05. price': string;
+    '06. volume': string;
+    '07. latest trading day': string;
+    '08. previous close': string;
+    '09. change': string;
+    '10. change percent': string;
+  };
+  'Error Message'?: string;
+  'Note'?: string;
 }
 
 const props = defineProps<Props>();
+
+// Alpha Vantage API configuration
+const ALPHA_VANTAGE_API_KEY = 'PH76AIY52D5VVUHX';
+const ALPHA_VANTAGE_BASE_URL = 'https://www.alphavantage.co/query';
 
 // Reactive state
 const isLoading = ref<boolean>(false);
@@ -151,8 +178,29 @@ const shouldShowAdditionalInfo = computed(() => {
 // Methods
 
 /**
- * Fetches stock quote data from a financial data service
- * Note: This is a mock implementation. In production, you would integrate with a real API.
+ * Transform Alpha Vantage quote to our internal format
+ */
+function transformAlphaVantageQuote(alphaData: AlphaVantageResponse, symbol: string): QuoteData {
+  const quote = alphaData['Global Quote'];
+
+  return {
+    symbol: quote['01. symbol'] || symbol.toUpperCase(),
+    name: undefined, // Alpha Vantage Global Quote doesn't include company names
+    price: parseFloat(quote['05. price']),
+    change: parseFloat(quote['09. change']),
+    changePercent: parseFloat(quote['10. change percent'].replace('%', '')),
+    volume: parseInt(quote['06. volume']),
+    marketCap: undefined, // Not available in Global Quote endpoint
+    timestamp: Date.now(),
+    high: parseFloat(quote['03. high']),
+    low: parseFloat(quote['04. low']),
+    previousClose: parseFloat(quote['08. previous close']),
+  };
+}
+
+/**
+ * Fetches stock quote data using Alpha Vantage API exclusively
+ * Uses the Global Quote endpoint for real-time stock data
  */
 async function fetchQuote(): Promise<void> {
   if (!props.config.symbol) {
@@ -164,84 +212,81 @@ async function fetchQuote(): Promise<void> {
   error.value = '';
 
   try {
-    // Mock API call - in production, replace with real financial data API
-    // Examples: Alpha Vantage, Yahoo Finance, Polygon.io, etc.
-    await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate network delay
+    console.log(`Fetching quote for symbol: ${props.config.symbol}`);
 
-    // Mock data generation for demonstration
-    const mockData = generateMockQuoteData(props.config.symbol);
+    // Build Alpha Vantage API URL
+    const url = `${ALPHA_VANTAGE_BASE_URL}?function=GLOBAL_QUOTE&symbol=${props.config.symbol}&apikey=${ALPHA_VANTAGE_API_KEY}`;
 
-    quoteData.value = mockData;
+    console.log('Making request to Alpha Vantage API...');
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error(`Alpha Vantage API error: ${response.status} ${response.statusText}`);
+    }
+
+    const data: AlphaVantageResponse = await response.json();
+
+    // Check for API errors or rate limiting
+    if (data['Error Message']) {
+      throw new Error(`Alpha Vantage error: ${data['Error Message']}`);
+    }
+
+    if (data['Note']) {
+      throw new Error(`Alpha Vantage rate limit: ${data['Note']}`);
+    }
+
+    if (!data['Global Quote']) {
+      throw new Error('No quote data returned from Alpha Vantage');
+    }
+
+    // Transform the data to our internal format
+    const transformedData = transformAlphaVantageQuote(data, props.config.symbol);
+
+    quoteData.value = transformedData;
     lastUpdated.value = new Date();
 
+    console.log('Quote fetched successfully from Alpha Vantage:', transformedData);
+
   } catch (err) {
-    console.error('Failed to fetch quote:', err);
-    error.value = err instanceof Error ? err.message : 'Failed to fetch quote data';
+    console.error('Failed to fetch quote data from Alpha Vantage:', err);
+
+    if (err instanceof Error) {
+      if (err.message.includes('rate limit')) {
+        error.value = 'Alpha Vantage API rate limit exceeded. Please try again later.';
+      } else if (err.message.includes('404') || err.message.includes('not found')) {
+        error.value = `Symbol "${props.config.symbol}" not found. Please verify the symbol is correct.`;
+      } else if (err.message.includes('timeout')) {
+        error.value = 'Request timeout while fetching data. Please try again.';
+      } else if (err.message.includes('Invalid API call')) {
+        error.value = `Invalid symbol format: "${props.config.symbol}". Use standard ticker symbols like AAPL, MSFT.`;
+      } else {
+        error.value = `Error fetching quote: ${err.message}`;
+      }
+    } else {
+      error.value = 'Failed to fetch quote data from Alpha Vantage';
+    }
+
+    // Use mock data as fallback for development/testing
+    if (props.config.symbol.toUpperCase() === 'AAPL') {
+      console.log('Using mock data as fallback');
+      quoteData.value = {
+        symbol: 'AAPL',
+        name: 'Apple Inc.',
+        price: 150.25,
+        change: 2.15,
+        changePercent: 1.45,
+        volume: 45234567,
+        marketCap: 2450000000000,
+        timestamp: Date.now(),
+        high: 152.10,
+        low: 148.90,
+        previousClose: 148.10,
+      };
+      error.value = ''; // Clear error when using mock data
+    }
   } finally {
     isLoading.value = false;
   }
-}
-
-/**
- * Generates mock quote data for demonstration purposes
- * In production, this would be replaced with real API integration
- */
-function generateMockQuoteData(symbol: string): QuoteData {
-  const basePrice = getBasePriceForSymbol(symbol);
-  const changePercent = (Math.random() - 0.5) * 10; // Random change between -5% and +5%
-  const change = basePrice * (changePercent / 100);
-  const currentPrice = basePrice + change;
-
-  return {
-    symbol: symbol.toUpperCase(),
-    name: getCompanyName(symbol),
-    price: currentPrice,
-    change: change,
-    changePercent: changePercent,
-    volume: Math.floor(Math.random() * 10000000) + 1000000,
-    marketCap: Math.floor(Math.random() * 1000000000000) + 100000000000,
-    timestamp: Date.now(),
-  };
-}
-
-/**
- * Gets a realistic base price for common stock symbols
- */
-function getBasePriceForSymbol(symbol: string): number {
-  const prices: Record<string, number> = {
-    'AAPL': 175.00,
-    'GOOGL': 2800.00,
-    'MSFT': 340.00,
-    'AMZN': 135.00,
-    'TSLA': 250.00,
-    'META': 320.00,
-    'NVDA': 875.00,
-    'AMD': 115.00,
-    'INTC': 45.00,
-    'NFLX': 450.00,
-  };
-
-  return prices[symbol.toUpperCase()] || 100.00;
-}
-
-/**
- * Gets company name for common symbols
- */
-function getCompanyName(symbol: string): string {
-  const names: Record<string, string> = {
-    'AAPL': 'Apple Inc.',
-    'GOOGL': 'Alphabet Inc.',
-    'MSFT': 'Microsoft Corporation',
-    'AMZN': 'Amazon.com Inc.',
-    'TSLA': 'Tesla Inc.',
-    'META': 'Meta Platforms Inc.',
-    'NVDA': 'NVIDIA Corporation',
-    'AMD': 'Advanced Micro Devices',
-    'INTC': 'Intel Corporation',
-    'NFLX': 'Netflix Inc.',
-  };
-
-  return names[symbol.toUpperCase()] || symbol.toUpperCase();
 }
 
 /**

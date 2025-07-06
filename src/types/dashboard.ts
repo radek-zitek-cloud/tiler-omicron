@@ -223,7 +223,7 @@ export const BREAKPOINTS = {
 /**
  * Available tile content component types
  */
-export type TileContentType = 'equity-quote' | 'placeholder';
+export type TileContentType = 'equity-quote' | 'placeholder' | 'news';
 
 /**
  * Base interface for tile content configuration
@@ -265,9 +265,31 @@ export interface PlaceholderContent extends BaseTileContent {
 }
 
 /**
+ * Configuration for news tile content
+ */
+export interface NewsContent extends BaseTileContent {
+  type: 'news';
+  /** News query or topic (e.g., 'technology', 'business', 'world') */
+  query: string;
+  /** Number of articles to display (default: 5, max: 10) */
+  articleCount?: number;
+  /** Language for news (default: 'en') */
+  language?: string;
+  /** Country for localized news (default: 'US') */
+  country?: string;
+  /** Display options for news layout */
+  displayOptions?: {
+    showImages?: boolean;
+    showSource?: boolean;
+    showTimestamp?: boolean;
+    compactView?: boolean;
+  };
+}
+
+/**
  * Union type for all tile content configurations
  */
-export type TileContent = EquityQuoteContent | PlaceholderContent;
+export type TileContent = EquityQuoteContent | PlaceholderContent | NewsContent;
 
 /**
  * Registry of available tile content types with metadata
@@ -305,5 +327,26 @@ export const TILE_CONTENT_TYPES: Record<TileContentType, {
       message: 'Content coming soon...',
     },
     requiredFields: [],
+  },
+  'news': {
+    displayName: 'News Feed',
+    description: 'Display latest news articles from Google News',
+    defaultConfig: {
+      type: 'news',
+      displayName: 'News Feed',
+      autoRefresh: true,
+      refreshInterval: 300, // 5 minutes
+      query: 'technology',
+      articleCount: 5,
+      language: 'en',
+      country: 'US',
+      displayOptions: {
+        showImages: false,
+        showSource: true,
+        showTimestamp: true,
+        compactView: false,
+      },
+    },
+    requiredFields: ['query'],
   },
 };

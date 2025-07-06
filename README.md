@@ -98,6 +98,68 @@ The application will be available at `http://localhost:5173`
 - **Import Layout**: Upload and restore layout from JSON file
 - **Responsive**: Layout automatically adapts to screen size
 
+## 🧩 Tile Content Types
+
+The dashboard supports various content types for tiles:
+
+### Available Content Types
+
+#### 📈 Stock Quote (`equity-quote`)
+- Real-time stock price data from Alpha Vantage API
+- Displays price, change, volume, and market data
+- Auto-refresh with configurable intervals
+- Support for US and international symbols
+
+**Configuration:**
+```typescript
+{
+  type: 'equity-quote',
+  symbol: 'AAPL',
+  displayOptions: {
+    showChange: true,
+    showPercentChange: true,
+    showVolume: true
+  }
+}
+```
+
+#### 📰 News Feed (`news`)
+- Latest news articles from Google News
+- Support for topic-based and custom search queries
+- Configurable article count and display options
+- Auto-refresh with CORS proxy fallback system
+
+**Configuration:**
+```typescript
+{
+  type: 'news',
+  query: 'technology',
+  articleCount: 5,
+  displayOptions: {
+    showSource: true,
+    showTimestamp: true,
+    compactView: false
+  }
+}
+```
+
+**Supported News Topics:**
+- `technology` - Technology news
+- `business` - Business & finance
+- `world` - World news
+- `sports` - Sports news
+- `science` - Science news
+- Custom search queries (e.g., "artificial intelligence")
+
+#### 📦 Placeholder (`placeholder`)
+- Simple placeholder content for testing
+- Customizable message display
+- Useful for layout planning
+
+**Documentation:**
+- 📊 **Stock Quotes**: See `docs/API_MIGRATION.md` for Alpha Vantage API details
+- 📰 **News Feed**: See `docs/NEWS_TILE_USAGE.md` for comprehensive news configuration
+
 ## 🏗️ Architecture
 
 ### Component Structure
