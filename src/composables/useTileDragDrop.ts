@@ -52,7 +52,7 @@ interface UseTileDragDropOptions {
   gridColumns: number;
   rowHeight: number;
   isResizing: Ref<boolean>;
-  emit: (event: keyof DragDropEmits, ...args: any[]) => void;
+  emit: (event: string, ...args: unknown[]) => void;
 }
 
 /**

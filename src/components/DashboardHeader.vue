@@ -209,27 +209,6 @@ const emit = defineEmits<Emits>();
 const dashboardStore = useDashboardStore();
 
 /**
- * Computed property for dashboard statistics
- * 
- * Provides useful information about the current dashboard state
- * for display in the status section.
- * 
- * @returns Dashboard statistics object
- */
-const dashboardStats = computed(() => {
-  const tiles = dashboardStore.tiles;
-  const totalArea = tiles.reduce((sum, tile) => sum + (tile.width * tile.height), 0);
-  
-  return {
-    tileCount: tiles.length,
-    gridColumns: dashboardStore.gridColumns,
-    totalArea,
-    avgTileSize: tiles.length > 0 ? Math.round(totalArea / tiles.length * 10) / 10 : 0,
-    layoutName: dashboardStore.currentLayout.name,
-  };
-});
-
-/**
  * Handles add tile action
  * 
  * Delegates to parent component for actual tile creation.

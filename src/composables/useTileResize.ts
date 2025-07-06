@@ -61,7 +61,7 @@ interface UseTileResizeOptions {
   gridColumns: number;
   rowHeight: number;
   isDragging: Ref<boolean>;
-  emit: (event: keyof ResizeEmits, ...args: any[]) => void;
+  emit: (event: string, ...args: unknown[]) => void;
 }
 
 /**

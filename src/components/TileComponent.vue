@@ -265,7 +265,7 @@ const {
   gridColumns: props.gridColumns,
   rowHeight: props.rowHeight,
   isResizing: isResizingReactive,
-  emit: (event: any, ...args: any[]) => (emit as any)(event, ...args),
+  emit: (event: string, ...args: unknown[]) => (emit as (event: string, ...args: unknown[]) => void)(event, ...args),
 });
 
 /**
@@ -284,7 +284,7 @@ const {
   gridColumns: props.gridColumns,
   rowHeight: props.rowHeight,
   isDragging: isDragginReactive,
-  emit: (event: any, ...args: any[]) => (emit as any)(event, ...args),
+  emit: (event: string, ...args: unknown[]) => (emit as (event: string, ...args: unknown[]) => void)(event, ...args),
 });
 
 /**
