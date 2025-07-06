@@ -30,7 +30,7 @@ A flexible, responsive web-based dashboard featuring a tile-based layout system 
 ### Responsive Design
 
 - ✅ **Desktop** (1200px+) - 12-column grid
-- ✅ **Tablet** (768px-1199px) - 8-column grid  
+- ✅ **Tablet** (768px-1199px) - 8-column grid
 - ✅ **Mobile** (576px-767px) - 4-column grid
 - ✅ **Small Mobile** (<576px) - 1-column stack
 
@@ -105,12 +105,14 @@ The dashboard supports various content types for tiles:
 ### Available Content Types
 
 #### 📈 Stock Quote (`equity-quote`)
+
 - Real-time stock price data from Alpha Vantage API
 - Displays price, change, volume, and market data
 - Auto-refresh with configurable intervals
 - Support for US and international symbols
 
 **Configuration:**
+
 ```typescript
 {
   type: 'equity-quote',
@@ -124,12 +126,14 @@ The dashboard supports various content types for tiles:
 ```
 
 #### 📰 News Feed (`news`)
+
 - Latest news articles from Google News
 - Support for topic-based and custom search queries
 - Configurable article count and display options
 - Auto-refresh with CORS proxy fallback system
 
 **Configuration:**
+
 ```typescript
 {
   type: 'news',
@@ -144,6 +148,7 @@ The dashboard supports various content types for tiles:
 ```
 
 **Supported News Topics:**
+
 - `technology` - Technology news
 - `business` - Business & finance
 - `world` - World news
@@ -152,11 +157,13 @@ The dashboard supports various content types for tiles:
 - Custom search queries (e.g., "artificial intelligence")
 
 #### 📦 Placeholder (`placeholder`)
+
 - Simple placeholder content for testing
 - Customizable message display
 - Useful for layout planning
 
 **Documentation:**
+
 - 📊 **Stock Quotes**: See `docs/API_MIGRATION.md` for Alpha Vantage API details
 - 📰 **News Feed**: See `docs/NEWS_TILE_USAGE.md` for comprehensive news configuration
 
@@ -231,7 +238,7 @@ All requirements from `docs/REQUIREMENTS.md` have been implemented:
 ### Functional Requirements ✅
 
 - **FR-1**: Tile Creation
-- **FR-2**: Tile Deletion  
+- **FR-2**: Tile Deletion
 - **FR-3**: Tile Resizing
 - **FR-4**: Tile Rearrangement
 - **FR-5**: Grid Layout Engine
