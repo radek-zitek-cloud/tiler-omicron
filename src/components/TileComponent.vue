@@ -315,6 +315,112 @@
                     ></textarea>
                   </div>
                 </div>
+
+                <!-- News Configuration -->
+                <div v-else-if="editContentType === 'news'" class="content-config">
+                  <div class="mb-2">
+                    <label :for="`query-${tile.id}`" class="form-label">News Topic or Search Query</label>
+                    <input
+                      type="text"
+                      class="form-control"
+                      :id="`query-${tile.id}`"
+                      v-model="editContentConfig.query"
+                      placeholder="e.g., technology, business, artificial intelligence"
+                      maxlength="100"
+                      required
+                    />
+                    <div class="form-text">
+                      Use predefined topics (technology, business, world) or custom search terms
+                    </div>
+                  </div>
+
+                  <div class="row mb-2">
+                    <div class="col-sm-6">
+                      <label :for="`articleCount-${tile.id}`" class="form-label">Article Count</label>
+                      <select
+                        class="form-select"
+                        :id="`articleCount-${tile.id}`"
+                        v-model="editContentConfig.articleCount"
+                      >
+                        <option :value="3">3 articles</option>
+                        <option :value="5">5 articles</option>
+                        <option :value="8">8 articles</option>
+                        <option :value="10">10 articles</option>
+                      </select>
+                    </div>
+                    <div class="col-sm-6">
+                      <label :for="`refreshInterval-${tile.id}`" class="form-label">Refresh Interval</label>
+                      <select
+                        class="form-select"
+                        :id="`refreshInterval-${tile.id}`"
+                        v-model="editContentConfig.refreshInterval"
+                      >
+                        <option :value="180">3 minutes</option>
+                        <option :value="300">5 minutes</option>
+                        <option :value="600">10 minutes</option>
+                        <option :value="1800">30 minutes</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="row">
+                    <div class="col-sm-6">
+                      <div class="form-check">
+                        <input
+                          class="form-check-input"
+                          type="checkbox"
+                          :id="`showSource-${tile.id}`"
+                          v-model="editContentConfig.displayOptions.showSource"
+                        />
+                        <label class="form-check-label" :for="`showSource-${tile.id}`">
+                          Show News Source
+                        </label>
+                      </div>
+                    </div>
+                    <div class="col-sm-6">
+                      <div class="form-check">
+                        <input
+                          class="form-check-input"
+                          type="checkbox"
+                          :id="`showTimestamp-${tile.id}`"
+                          v-model="editContentConfig.displayOptions.showTimestamp"
+                        />
+                        <label class="form-check-label" :for="`showTimestamp-${tile.id}`">
+                          Show Timestamps
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="row mt-2">
+                    <div class="col-sm-6">
+                      <div class="form-check">
+                        <input
+                          class="form-check-input"
+                          type="checkbox"
+                          :id="`compactView-${tile.id}`"
+                          v-model="editContentConfig.displayOptions.compactView"
+                        />
+                        <label class="form-check-label" :for="`compactView-${tile.id}`">
+                          Compact View
+                        </label>
+                      </div>
+                    </div>
+                    <div class="col-sm-6">
+                      <div class="form-check">
+                        <input
+                          class="form-check-input"
+                          type="checkbox"
+                          :id="`autoRefreshNews-${tile.id}`"
+                          v-model="editContentConfig.autoRefresh"
+                        />
+                        <label class="form-check-label" :for="`autoRefreshNews-${tile.id}`">
+                          Auto Refresh
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div class="mb-3">
@@ -435,14 +541,29 @@ const resizeStartData = ref<{
 const editTitle = ref<string>('');
 const editContentType = ref<TileContentType | ''>('');
 const editContentConfig = ref<{
+  // Equity quote properties
   symbol?: string;
+  // Placeholder properties
   message?: string;
+  // News properties
+  query?: string;
+  articleCount?: number;
+  language?: string;
+  country?: string;
+  // Common properties
   autoRefresh?: boolean;
+  refreshInterval?: number;
   displayOptions: {
+    // Equity display options
     showChange: boolean;
     showPercentChange: boolean;
     showVolume: boolean;
     showChart: boolean;
+    // News display options
+    showImages?: boolean;
+    showSource?: boolean;
+    showTimestamp?: boolean;
+    compactView?: boolean;
   };
 }>({
   displayOptions: {
@@ -450,6 +571,10 @@ const editContentConfig = ref<{
     showPercentChange: true,
     showVolume: true,
     showChart: false,
+    showImages: false,
+    showSource: true,
+    showTimestamp: true,
+    compactView: false,
   },
 });
 
@@ -574,11 +699,35 @@ function handleEdit(): void {
       editContentConfig.value = {
         symbol: props.tile.content.symbol || 'AAPL',
         autoRefresh: props.tile.content.autoRefresh || true,
+        refreshInterval: props.tile.content.refreshInterval || 60,
         displayOptions: {
           showChange: props.tile.content.displayOptions?.showChange ?? true,
           showPercentChange: props.tile.content.displayOptions?.showPercentChange ?? true,
           showVolume: props.tile.content.displayOptions?.showVolume ?? true,
           showChart: props.tile.content.displayOptions?.showChart ?? false,
+          showImages: false,
+          showSource: true,
+          showTimestamp: true,
+          compactView: false,
+        },
+      };
+    } else if (props.tile.content.type === 'news') {
+      editContentConfig.value = {
+        query: props.tile.content.query || 'technology',
+        articleCount: props.tile.content.articleCount || 5,
+        language: props.tile.content.language || 'en',
+        country: props.tile.content.country || 'US',
+        autoRefresh: props.tile.content.autoRefresh ?? true,
+        refreshInterval: props.tile.content.refreshInterval || 300,
+        displayOptions: {
+          showChange: true,
+          showPercentChange: true,
+          showVolume: true,
+          showChart: false,
+          showImages: props.tile.content.displayOptions?.showImages ?? false,
+          showSource: props.tile.content.displayOptions?.showSource ?? true,
+          showTimestamp: props.tile.content.displayOptions?.showTimestamp ?? true,
+          compactView: props.tile.content.displayOptions?.compactView ?? false,
         },
       };
     } else if (props.tile.content.type === 'placeholder') {
@@ -589,6 +738,10 @@ function handleEdit(): void {
           showPercentChange: true,
           showVolume: true,
           showChart: false,
+          showImages: false,
+          showSource: true,
+          showTimestamp: true,
+          compactView: false,
         },
       };
     }
@@ -634,12 +787,29 @@ function handleSaveEdit(): void {
         displayName: 'Stock Quote',
         symbol: editContentConfig.value.symbol || 'AAPL',
         autoRefresh: editContentConfig.value.autoRefresh ?? true,
-        refreshInterval: 60,
+        refreshInterval: editContentConfig.value.refreshInterval ?? 60,
         displayOptions: {
           showChange: editContentConfig.value.displayOptions?.showChange ?? true,
           showPercentChange: editContentConfig.value.displayOptions?.showPercentChange ?? true,
           showVolume: editContentConfig.value.displayOptions?.showVolume ?? true,
           showChart: editContentConfig.value.displayOptions?.showChart ?? false,
+        },
+      };
+    } else if (editContentType.value === 'news') {
+      newContent = {
+        type: 'news' as const,
+        displayName: 'News Feed',
+        query: editContentConfig.value.query || 'technology',
+        articleCount: editContentConfig.value.articleCount || 5,
+        language: editContentConfig.value.language || 'en',
+        country: editContentConfig.value.country || 'US',
+        autoRefresh: editContentConfig.value.autoRefresh ?? true,
+        refreshInterval: editContentConfig.value.refreshInterval ?? 300,
+        displayOptions: {
+          showImages: editContentConfig.value.displayOptions?.showImages ?? false,
+          showSource: editContentConfig.value.displayOptions?.showSource ?? true,
+          showTimestamp: editContentConfig.value.displayOptions?.showTimestamp ?? true,
+          compactView: editContentConfig.value.displayOptions?.compactView ?? false,
         },
       };
     } else if (editContentType.value === 'placeholder') {
@@ -719,26 +889,85 @@ function handleContentTypeChange(): void {
         showPercentChange: true,
         showVolume: true,
         showChart: false,
+        showImages: false,
+        showSource: true,
+        showTimestamp: true,
+        compactView: false,
       },
     };
     return;
   }
 
   const defaultConfig = contentTypes[editContentType.value]?.defaultConfig || {};
-  const configDisplayOptions = defaultConfig.type === 'equity-quote' ?
-    (defaultConfig as { displayOptions?: typeof editContentConfig.value.displayOptions }).displayOptions :
-    undefined;
 
-  editContentConfig.value = {
-    ...defaultConfig,
-    displayOptions: {
-      showChange: true,
-      showPercentChange: true,
-      showVolume: true,
-      showChart: false,
-      ...configDisplayOptions,
-    },
-  };
+  // Handle different content types
+  if (editContentType.value === 'equity-quote') {
+    const equityConfig = defaultConfig as Partial<import('@/types/dashboard').EquityQuoteContent>;
+    editContentConfig.value = {
+      symbol: equityConfig.symbol || 'AAPL',
+      autoRefresh: equityConfig.autoRefresh ?? true,
+      refreshInterval: equityConfig.refreshInterval ?? 60,
+      displayOptions: {
+        showChange: equityConfig.displayOptions?.showChange ?? true,
+        showPercentChange: equityConfig.displayOptions?.showPercentChange ?? true,
+        showVolume: equityConfig.displayOptions?.showVolume ?? true,
+        showChart: equityConfig.displayOptions?.showChart ?? false,
+        showImages: false,
+        showSource: true,
+        showTimestamp: true,
+        compactView: false,
+      },
+    };
+  } else if (editContentType.value === 'news') {
+    const newsConfig = defaultConfig as Partial<import('@/types/dashboard').NewsContent>;
+    editContentConfig.value = {
+      query: newsConfig.query || 'technology',
+      articleCount: newsConfig.articleCount || 5,
+      language: newsConfig.language || 'en',
+      country: newsConfig.country || 'US',
+      autoRefresh: newsConfig.autoRefresh ?? true,
+      refreshInterval: newsConfig.refreshInterval ?? 300,
+      displayOptions: {
+        showChange: true,
+        showPercentChange: true,
+        showVolume: true,
+        showChart: false,
+        showImages: newsConfig.displayOptions?.showImages ?? false,
+        showSource: newsConfig.displayOptions?.showSource ?? true,
+        showTimestamp: newsConfig.displayOptions?.showTimestamp ?? true,
+        compactView: newsConfig.displayOptions?.compactView ?? false,
+      },
+    };
+  } else if (editContentType.value === 'placeholder') {
+    const placeholderConfig = defaultConfig as Partial<import('@/types/dashboard').PlaceholderContent>;
+    editContentConfig.value = {
+      message: placeholderConfig.message || 'Content coming soon...',
+      displayOptions: {
+        showChange: true,
+        showPercentChange: true,
+        showVolume: true,
+        showChart: false,
+        showImages: false,
+        showSource: true,
+        showTimestamp: true,
+        compactView: false,
+      },
+    };
+  } else {
+    // Default fallback
+    editContentConfig.value = {
+      displayOptions: {
+        showChange: true,
+        showPercentChange: true,
+        showVolume: true,
+        showChart: false,
+        showImages: false,
+        showSource: true,
+        showTimestamp: true,
+        compactView: false,
+      },
+    };
+  }
 }
 
 // Drag and drop handlers

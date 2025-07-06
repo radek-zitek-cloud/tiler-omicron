@@ -160,15 +160,11 @@ class GoogleNewsService {
       return response;
 
     } catch (error) {
-      console.error('Failed to fetch news:', error);
+      console.warn(`Failed to fetch live news for "${query}": ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.log(`Falling back to mock news data for query: "${query}"`);
 
-      // Return mock data for development/testing
-      if (query.toLowerCase().includes('technology')) {
-        console.log('Using mock technology news data');
-        return this.getMockNewsResponse(query);
-      }
-
-      throw error;
+      // Return appropriate mock data based on query
+      return this.getMockNewsResponse(query, limit);
     }
   }
 
@@ -444,10 +440,13 @@ class GoogleNewsService {
    * Provides mock news data for development and testing
    *
    * @param query - Search query for context
+   * @param limit - Maximum number of articles to return
    * @returns Mock news response
    */
-  private getMockNewsResponse(query: string): NewsResponse {
-    const mockArticles: NewsArticle[] = [
+  private getMockNewsResponse(query: string, limit = 10): NewsResponse {
+    // Comprehensive mock data covering various topics
+    const allMockArticles: NewsArticle[] = [
+      // Technology News
       {
         title: 'Apple Unveils Revolutionary AI-Powered MacBook Pro',
         description: 'Apple announces new MacBook Pro with custom AI chips, promising breakthrough performance for machine learning workloads and creative applications.',
@@ -480,6 +479,78 @@ class GoogleNewsService {
         publishedAt: Date.now() - 14400000, // 4 hours ago
         category: 'science',
       },
+
+      // Business News
+      {
+        title: 'Global Stock Markets Rally on Economic Recovery Signs',
+        description: 'Major stock indices worldwide post significant gains as investors react positively to encouraging economic data and corporate earnings reports.',
+        url: 'https://example.com/stock-markets-rally',
+        source: 'Bloomberg',
+        publishedAt: Date.now() - 1800000, // 30 minutes ago
+        category: 'business',
+      },
+      {
+        title: 'Electric Vehicle Sales Surge 40% Year-Over-Year',
+        description: 'Electric vehicle manufacturers report record-breaking sales figures, driven by improved battery technology and expanding charging infrastructure.',
+        url: 'https://example.com/ev-sales-surge',
+        source: 'Wall Street Journal',
+        publishedAt: Date.now() - 5400000, // 1.5 hours ago
+        category: 'business',
+      },
+      {
+        title: 'Cryptocurrency Market Stabilizes After Volatility',
+        description: 'Major cryptocurrencies show signs of stabilization following weeks of market volatility, with institutional investors increasing their positions.',
+        url: 'https://example.com/crypto-market-stable',
+        source: 'CNBC',
+        publishedAt: Date.now() - 9000000, // 2.5 hours ago
+        category: 'business',
+      },
+
+      // World News
+      {
+        title: 'International Climate Summit Reaches Historic Agreement',
+        description: 'World leaders gather to sign groundbreaking climate accord, setting ambitious targets for carbon reduction and renewable energy adoption.',
+        url: 'https://example.com/climate-summit-agreement',
+        source: 'BBC',
+        publishedAt: Date.now() - 2700000, // 45 minutes ago
+        category: 'world',
+      },
+      {
+        title: 'Space Station Mission Achieves Scientific Breakthrough',
+        description: 'Astronauts aboard the International Space Station complete successful experiments that could revolutionize materials science and medicine.',
+        url: 'https://example.com/space-station-breakthrough',
+        source: 'CNN',
+        publishedAt: Date.now() - 12600000, // 3.5 hours ago
+        category: 'world',
+      },
+      {
+        title: 'Renewable Energy Project Powers Entire City',
+        description: 'A major metropolitan area becomes the first to run entirely on renewable energy, showcasing the potential for sustainable urban development.',
+        url: 'https://example.com/renewable-energy-city',
+        source: 'The Guardian',
+        publishedAt: Date.now() - 16200000, // 4.5 hours ago
+        category: 'world',
+      },
+
+      // Health News
+      {
+        title: 'Breakthrough Cancer Treatment Shows Promise in Trials',
+        description: 'New immunotherapy approach demonstrates remarkable success rates in clinical trials, offering hope for patients with advanced cancers.',
+        url: 'https://example.com/cancer-treatment-breakthrough',
+        source: 'Medical News Today',
+        publishedAt: Date.now() - 4500000, // 1.25 hours ago
+        category: 'health',
+      },
+      {
+        title: 'AI-Powered Diagnostic Tool Improves Early Detection',
+        description: 'Machine learning algorithm successfully identifies diseases in early stages with 95% accuracy, potentially saving millions of lives.',
+        url: 'https://example.com/ai-diagnostic-tool',
+        source: 'Nature Medicine',
+        publishedAt: Date.now() - 8100000, // 2.25 hours ago
+        category: 'health',
+      },
+
+      // Science News
       {
         title: 'SpaceX Successfully Launches Starship Mission',
         description: 'SpaceX completes another successful Starship test flight, marking significant progress toward Mars exploration and commercial space travel goals.',
@@ -488,14 +559,56 @@ class GoogleNewsService {
         publishedAt: Date.now() - 18000000, // 5 hours ago
         category: 'science',
       },
+      {
+        title: 'Scientists Discover New Form of Carbon Material',
+        description: 'Researchers unveil revolutionary carbon-based material with unprecedented strength and conductivity, opening new possibilities for technology.',
+        url: 'https://example.com/new-carbon-material',
+        source: 'Scientific American',
+        publishedAt: Date.now() - 19800000, // 5.5 hours ago
+        category: 'science',
+      },
     ];
 
+    // Filter articles based on query if it matches specific topics
+    let filteredArticles = allMockArticles;
+    const queryLower = query.toLowerCase();
+
+    if (queryLower.includes('technology') || queryLower.includes('tech')) {
+      filteredArticles = allMockArticles.filter(article =>
+        article.category === 'technology' || article.title.toLowerCase().includes('tech')
+      );
+    } else if (queryLower.includes('business') || queryLower.includes('finance') || queryLower.includes('economy')) {
+      filteredArticles = allMockArticles.filter(article =>
+        article.category === 'business' || article.title.toLowerCase().includes('business')
+      );
+    } else if (queryLower.includes('world') || queryLower.includes('international') || queryLower.includes('global')) {
+      filteredArticles = allMockArticles.filter(article =>
+        article.category === 'world' || article.title.toLowerCase().includes('world')
+      );
+    } else if (queryLower.includes('health') || queryLower.includes('medical') || queryLower.includes('medicine')) {
+      filteredArticles = allMockArticles.filter(article =>
+        article.category === 'health' || article.title.toLowerCase().includes('health')
+      );
+    } else if (queryLower.includes('science') || queryLower.includes('research') || queryLower.includes('space')) {
+      filteredArticles = allMockArticles.filter(article =>
+        article.category === 'science' || article.title.toLowerCase().includes('science')
+      );
+    }
+
+    // If no specific match, return a mix of top articles
+    if (filteredArticles.length === 0) {
+      filteredArticles = allMockArticles.slice(0, 8); // Top 8 diverse articles
+    }
+
+    // Apply limit and return response
+    const limitedArticles = filteredArticles.slice(0, limit);
+
     return {
-      articles: mockArticles,
-      totalResults: mockArticles.length,
+      articles: limitedArticles,
+      totalResults: limitedArticles.length,
       query,
       timestamp: Date.now(),
-      source: 'Mock Data',
+      source: 'Mock Data (Development Mode)',
     };
   }
 }
