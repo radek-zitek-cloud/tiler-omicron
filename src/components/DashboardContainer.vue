@@ -1,98 +1,37 @@
 <!--
-  DashboardContainer - Main container for the dashboard tiling system
+  DashboardContainer - Refactored main container for the dashboard tiling system
 
-  This component serves as the primary container for the dashboard,
-  handling the grid layout, responsive behavior, and coordinating
-  all tile operations.
+  This component serves as the primary container for the dashboard using
+  composable architecture for better maintainability and separation of concerns.
+  
+  Refactored Architecture:
+  - Uses useDashboardGrid composable for grid management
+  - Uses useDashboardOperations composable for tile operations
+  - Uses DashboardHeader component for header interface
+  - Focused on layout coordination and event handling
 
   Key Features:
   - Responsive grid system with breakpoints
-  - Drag and drop coordination
-  - Tile management and controls
-  - Layout persistence
+  - Drag and drop coordination via composables
+  - Tile management and controls via composables
+  - Layout persistence via composables
   - Visual feedback for operations
+  - Modular header component
 -->
 
 <template>
   <div class="dashboard-container">
-    <!-- Dashboard Header -->
-    <div class="dashboard-header">
-      <div class="d-flex justify-content-between align-items-center">
-        <h1 class="dashboard-title">
-          {{ dashboardStore.currentLayout.name }}
-        </h1>
-
-        <div class="dashboard-controls">
-          <div class="dropdown">
-            <button
-              class="btn btn-outline-secondary btn-sm dropdown-toggle"
-              type="button"
-              data-bs-toggle="dropdown"
-              aria-expanded="false"
-            >
-              <i class="fas fa-ellipsis-v me-1" aria-hidden="true"></i>
-              Actions
-            </button>
-            <ul class="dropdown-menu">
-              <li>
-                <a
-                  class="dropdown-item"
-                  href="#"
-                  @click.prevent="handleAddTile"
-                  :class="{ 'disabled': isOperationInProgress }"
-                >
-                  <i class="fas fa-plus me-1" aria-hidden="true"></i>
-                  Add Tile
-                </a>
-              </li>
-              <li>
-                <a
-                  class="dropdown-item"
-                  href="#"
-                  @click.prevent="handleClearDashboard"
-                  :class="{ 'disabled': isOperationInProgress || dashboardStore.tiles.length === 0 }"
-                >
-                  <i class="fas fa-trash me-1" aria-hidden="true"></i>
-                  Clear All
-                </a>
-              </li>
-              <li><hr class="dropdown-divider"></li>
-              <li>
-                <a class="dropdown-item" href="#" @click.prevent="exportLayout">
-                  <i class="fas fa-download me-1" aria-hidden="true"></i>
-                  Export Layout
-                </a>
-              </li>
-              <li>
-                <a class="dropdown-item" href="#" @click.prevent="importLayout">
-                  <i class="fas fa-upload me-1" aria-hidden="true"></i>
-                  Import Layout
-                </a>
-              </li>
-              <li><hr class="dropdown-divider"></li>
-              <li>
-                <a class="dropdown-item" href="#" @click.prevent="showLayoutInfo">
-                  <i class="fas fa-info-circle me-1" aria-hidden="true"></i>
-                  Layout Info
-                </a>
-              </li>
-            </ul>
-          </div>
-        </div>
-
-        <!-- Compact Status Info -->
-        <div class="dashboard-status-compact ms-3">
-          <small class="text-muted">
-            {{ dashboardStore.tiles.length }} tiles • {{ dashboardStore.gridColumns }} cols
-          </small>
-          <div v-if="operationMessage" class="ms-2">
-            <small :class="operationMessageClass">
-              {{ operationMessage }}
-            </small>
-          </div>
-        </div>
-      </div>
-    </div>
+    <!-- Dashboard Header Component -->
+    <DashboardHeader
+      :operation-message="operationMessage"
+      :operation-message-class="operationMessageClass"
+      :is-operation-in-progress="isOperationInProgress"
+      @add-tile="handleAddTile"
+      @clear-dashboard="handleClearDashboard"
+      @export-layout="exportLayout"
+      @import-layout="importLayout"
+      @show-layout-info="showLayoutInfo"
+    />
 
     <!-- Grid Container -->
     <div
@@ -145,7 +84,12 @@
         v-if="dashboardStore.dragState.isDragging && dropZone"
         class="drop-zone-indicator"
         :style="dropZoneStyle"
-      ></div>
+      >
+        <div class="drop-zone-content">
+          <i class="fas fa-crosshairs" aria-hidden="true"></i>
+          <span class="drop-zone-text">Drop here</span>
+        </div>
+      </div>
 
       <!-- Empty State -->
       <div
@@ -160,7 +104,7 @@
           </p>
           <button
             class="btn btn-primary btn-lg"
-            @click="handleAddTile"
+            @click="() => handleAddTile()"
           >
             <i class="fas fa-plus me-2" aria-hidden="true"></i>
             Add Your First Tile
@@ -201,7 +145,7 @@
             ></button>
           </div>
           <div class="modal-body">
-            {{ confirmationMessage }}
+            <p>{{ confirmationMessage }}</p>
           </div>
           <div class="modal-footer">
             <button
@@ -227,641 +171,226 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
-import { useDashboardStore } from '@/stores/dashboard';
-import type { DashboardLayout, Tile, TileContent } from '@/types/dashboard';
-import TileComponent from './TileComponent.vue';
+/**
+ * DashboardContainer - Refactored with Composable Architecture
+ * 
+ * Main dashboard container that orchestrates grid management, tile operations,
+ * and user interactions using dedicated composables for better separation of concerns.
+ * 
+ * Architecture:
+ * - useDashboardGrid: Handles grid layout and drag/drop zones
+ * - useDashboardOperations: Manages tile operations and layout management
+ * - DashboardHeader: Separate component for header controls
+ * 
+ * @author Dashboard System
+ * @version 2.0.0 (Refactored)
+ */
 
-// Store
+import { ref, onMounted } from 'vue';
+import { useDashboardStore } from '@/stores/dashboard';
+import { useDashboardGrid } from '@/composables/useDashboardGrid';
+import { useDashboardOperations } from '@/composables/useDashboardOperations';
+import TileComponent from './TileComponent.vue';
+import DashboardHeader from './DashboardHeader.vue';
+
+// Dashboard store access
 const dashboardStore = useDashboardStore();
 
-// Refs
+// Template refs
 const gridContainer = ref<HTMLElement>();
-const confirmationModal = ref<HTMLElement>();
 const fileInput = ref<HTMLInputElement>();
+const confirmationModal = ref<HTMLElement>();
 
-// State
-const operationMessage = ref<string>('');
-const operationMessageClass = ref<string>('text-success');
-const showGridLines = ref<boolean>(false);
-const dropZone = ref<{ x: number; y: number; width: number; height: number } | null>(null);
-
-// Confirmation modal state
-const confirmationTitle = ref<string>('');
-const confirmationMessage = ref<string>('');
-const confirmationAction = ref<string>('');
-const pendingAction = ref<(() => void) | null>(null);
-
-// Computed properties
-const isOperationInProgress = computed(() =>
-  dashboardStore.dragState.isDragging || dashboardStore.resizeState.isResizing
-);
-
-const gridContainerStyle = computed(() => ({
-  '--grid-columns': dashboardStore.gridColumns,
-  '--grid-gap': `${dashboardStore.gridConfig.gap}px`,
-  '--container-padding': `${dashboardStore.gridConfig.padding}px`,
-  '--row-height': `${dashboardStore.gridConfig.rowHeight}px`,
-}));
-
-const gridLinesStyle = computed(() => ({
-  '--grid-columns': dashboardStore.gridColumns,
-}));
-
-const dropZoneStyle = computed(() => {
-  if (!dropZone.value) return {};
-
-  return {
-    left: `${(dropZone.value.x / dashboardStore.gridColumns) * 100}%`,
-    top: `${dropZone.value.y * dashboardStore.gridConfig.rowHeight}px`,
-    width: `${(dropZone.value.width / dashboardStore.gridColumns) * 100}%`,
-    height: `${dropZone.value.height * dashboardStore.gridConfig.rowHeight}px`,
-  };
+/**
+ * Initialize grid management composable
+ * 
+ * Provides grid layout, drag zones, and visual feedback functionality.
+ */
+const {
+  showGridLines,
+  dropZone,
+  isOperationInProgress,
+  gridContainerStyle,
+  gridLinesStyle,
+  dropZoneStyle,
+  updateDropZone,
+  clearDropZone,
+  showGridLinesTemporary,
+  hideGridLines,
+  handleGridDrop,
+} = useDashboardGrid({
+  gridContainer,
 });
 
-// Methods
-
 /**
- * Shows an operation message to the user
- * @param {string} message - Message to display
- * @param {'success' | 'error' | 'info'} type - Message type
+ * Initialize dashboard operations composable
+ * 
+ * Provides tile management, layout operations, and user feedback.
  */
-function showOperationMessage(message: string, type: 'success' | 'error' | 'info' = 'success'): void {
-  operationMessage.value = message;
-  operationMessageClass.value = `text-${type === 'error' ? 'danger' : type === 'info' ? 'info' : 'success'}`;
-
-  // Clear message after 3 seconds
-  setTimeout(() => {
-    operationMessage.value = '';
-  }, 3000);
-}
-
-/**
- * Shows a confirmation modal
- * @param {string} title - Modal title
- * @param {string} message - Confirmation message
- * @param {string} action - Action button text
- * @param {Function} callback - Function to call on confirmation
- */
-function showConfirmation(
-  title: string,
-  message: string,
-  action: string,
-  callback: () => void
-): void {
-  confirmationTitle.value = title;
-  confirmationMessage.value = message;
-  confirmationAction.value = action;
-  pendingAction.value = callback;
-
-  // Show modal using Bootstrap's modal API
-  if (confirmationModal.value) {
-    try {
-      // Check if Bootstrap is available
-      const windowWithBootstrap = window as unknown as { bootstrap?: { Modal: new (element: HTMLElement) => { show(): void } } };
-      if (windowWithBootstrap.bootstrap && windowWithBootstrap.bootstrap.Modal) {
-        const modal = new windowWithBootstrap.bootstrap.Modal(confirmationModal.value);
-        modal.show();
-      } else {
-        // Fallback to direct confirmation if Bootstrap is not available
-        if (confirm(`${title}\n\n${message}`)) {
-          callback();
-        }
-      }
-    } catch (error) {
-      console.error('Error showing modal:', error);
-      // Fallback to direct confirmation
-      if (confirm(`${title}\n\n${message}`)) {
-        callback();
-      }
-    }
-  }
-}
+const {
+  operationMessage,
+  operationMessageClass,
+  confirmationTitle,
+  confirmationMessage,
+  confirmationAction,
+  handleAddTile,
+  handleTileDelete,
+  handleTileEdit,
+  handleClearDashboard,
+  exportLayout,
+  importLayout,
+  handleFileImport,
+  showLayoutInfo,
+  confirmAction,
+} = useDashboardOperations({
+  confirmationModal,
+  fileInput,
+});
 
 /**
- * Executes the pending confirmation action
- */
-function confirmAction(): void {
-  if (pendingAction.value) {
-    pendingAction.value();
-    pendingAction.value = null;
-  }
-}
-
-// Tile operations
-
-/**
- * Handles adding a new tile
- */
-function handleAddTile(): void {
-  try {
-    const newTile = dashboardStore.createTile();
-    showOperationMessage(`Created tile "${newTile.title}"`);
-  } catch (error) {
-    console.error('Failed to create tile:', error);
-    showOperationMessage('Failed to create tile', 'error');
-  }
-}
-
-/**
- * Handles tile deletion with confirmation
- * @param {string} tileId - ID of tile to delete
- */
-function handleTileDelete(tileId: string): void {
-  const tile = dashboardStore.tiles.find(t => t.id === tileId);
-  if (!tile) return;
-
-  showConfirmation(
-    'Delete Tile',
-    `Are you sure you want to delete "${tile.title}"? This action cannot be undone.`,
-    'Delete',
-    () => {
-      if (dashboardStore.deleteTile(tileId)) {
-        showOperationMessage(`Deleted tile "${tile.title}"`);
-      } else {
-        showOperationMessage('Failed to delete tile', 'error');
-      }
-    }
-  );
-}
-
-/**
- * Handles tile editing
- * @param {string} tileId - ID of tile to edit
- * @param {object} changes - Changes to apply to the tile
- */
-function handleTileEdit(tileId: string, changes?: { title?: string; content?: object | null }): void {
-  if (!changes) {
-    // If no changes provided, just show a message (for backwards compatibility)
-    showOperationMessage('Tile edit dialog opened', 'info');
-    return;
-  }
-
-  const tile = dashboardStore.tiles.find(t => t.id === tileId);
-  if (!tile) {
-    showOperationMessage('Tile not found', 'error');
-    return;
-  }
-
-  try {
-    // Prepare update object with proper types
-    const updateData: Partial<Tile> = {};
-
-    // Update the tile with the changes
-    if (changes.title !== undefined) {
-      updateData.title = changes.title;
-    }
-
-    if (changes.content !== undefined) {
-      // Type cast the content properly - null means remove content, object means set content
-      updateData.content = changes.content as TileContent | undefined;
-    }
-
-    if (Object.keys(updateData).length > 0) {
-      if (dashboardStore.updateTile(tileId, updateData)) {
-        const changesList = [];
-        if (changes.title !== undefined) {
-          changesList.push(`title to "${changes.title}"`);
-        }
-        if (changes.content !== undefined) {
-          if (changes.content) {
-            const contentType = (changes.content as { type?: string }).type || 'unknown';
-            changesList.push(`content to ${contentType}`);
-          } else {
-            changesList.push('content removed');
-          }
-        }
-        showOperationMessage(`Updated tile: ${changesList.join(', ')}`);
-      } else {
-        showOperationMessage('Failed to update tile', 'error');
-      }
-    }
-  } catch (error) {
-    console.error('Failed to update tile:', error);
-    showOperationMessage('Failed to update tile', 'error');
-  }
-}
-
-/**
- * Handles clearing all tiles with confirmation
- */
-function handleClearDashboard(): void {
-  showConfirmation(
-    'Clear Dashboard',
-    'Are you sure you want to remove all tiles? This action cannot be undone.',
-    'Clear All',
-    () => {
-      const tileCount = dashboardStore.tiles.length;
-      dashboardStore.clearDashboard();
-      showOperationMessage(`Removed ${tileCount} tiles`);
-    }
-  );
-}
-
-// Drag and drop handlers
-
-/**
- * Handles drag start event
- * @param {string} tileId - ID of tile being dragged
+ * Handles drag start event from tiles
+ * 
+ * Initiates drag operation in the store and shows visual feedback.
+ * 
+ * @param tileId - ID of the tile being dragged
  */
 function handleDragStart(tileId: string): void {
   dashboardStore.startDrag(tileId);
-  showGridLines.value = true;
+  showGridLinesTemporary();
+  console.debug(`Drag started for tile: ${tileId}`);
 }
 
 /**
- * Handles drag move event
- * @param {object} position - Current drag position
+ * Handles drag move event from tiles
+ * 
+ * Updates drag position in store and manages drop zone visualization.
+ * 
+ * @param position - Current drag position in grid coordinates
  */
 function handleDragMove(position: { x: number; y: number }): void {
   dashboardStore.updateDrag(position.x, position.y);
 
   // Update drop zone visualization
-  const draggedTile = dashboardStore.tiles.find(t => t.id === dashboardStore.dragState.draggedTileId);
+  const draggedTile = dashboardStore.tiles.find(
+    t => t.id === dashboardStore.dragState.draggedTileId
+  );
+  
   if (draggedTile) {
-    dropZone.value = {
-      x: position.x,
-      y: position.y,
-      width: draggedTile.width,
-      height: draggedTile.height,
-    };
+    updateDropZone(position, draggedTile);
   }
 }
 
 /**
- * Handles drag end event
- * @param {boolean} commit - Whether to commit the move
+ * Handles drag end event from tiles
+ * 
+ * Completes drag operation and cleans up visual feedback.
+ * 
+ * @param commit - Whether to commit the move operation
  */
 function handleDragEnd(commit: boolean = true): void {
   const wasSuccessful = commit && dashboardStore.dragState.currentPosition;
-
+  
   dashboardStore.endDrag(commit);
-  showGridLines.value = false;
-  dropZone.value = null;
-
+  clearDropZone();
+  hideGridLines();
+  
   if (wasSuccessful) {
-    showOperationMessage('Tile moved successfully');
-  } else if (commit) {
-    showOperationMessage('Invalid position for tile', 'error');
+    console.debug('Drag operation completed successfully');
+  } else {
+    console.debug('Drag operation cancelled or failed');
   }
 }
 
 /**
- * Handles grid drop event
- * @param {DragEvent} event - Drop event
- */
-function handleGridDrop(event: DragEvent): void {
-  event.preventDefault();
-
-  if (!dashboardStore.dragState.isDragging) return;
-
-  // Calculate grid position from drop coordinates
-  const rect = gridContainer.value?.getBoundingClientRect();
-  if (!rect) return;
-
-  const x = Math.floor(((event.clientX - rect.left) / rect.width) * dashboardStore.gridColumns);
-  const y = Math.floor((event.clientY - rect.top) / dashboardStore.gridConfig.rowHeight);
-
-  handleDragMove({ x, y });
-  handleDragEnd(true);
-}
-
-// Resize handlers
-
-/**
- * Handles resize start event
- * @param {string} tileId - ID of tile being resized
- * @param {string} handle - Resize handle being used
+ * Handles resize start event from tiles
+ * 
+ * Initiates resize operation in the store.
+ * 
+ * @param tileId - ID of the tile being resized
+ * @param handle - Type of resize handle being used
  */
 function handleResizeStart(tileId: string, handle: 'se' | 'e' | 's'): void {
   dashboardStore.startResize(tileId, handle);
-  showGridLines.value = true;
+  console.debug(`Resize started for tile: ${tileId}, handle: ${handle}`);
 }
 
 /**
- * Handles resize move event
- * @param {object} size - Current resize dimensions
+ * Handles resize move event from tiles
+ * 
+ * Updates resize dimensions in the store for real-time feedback.
+ * 
+ * @param size - New size dimensions
  */
 function handleResizeMove(size: { width: number; height: number }): void {
   dashboardStore.updateResize(size.width, size.height);
 }
 
 /**
- * Handles resize end event
- * @param {boolean} commit - Whether to commit the resize
+ * Handles resize end event from tiles
+ * 
+ * Completes resize operation and applies final dimensions.
+ * 
+ * @param commit - Whether to commit the resize operation
  */
 function handleResizeEnd(commit: boolean = true): void {
   const wasSuccessful = commit && dashboardStore.resizeState.currentSize;
-
+  
   dashboardStore.endResize(commit);
-  showGridLines.value = false;
-
+  
   if (wasSuccessful) {
-    showOperationMessage('Tile resized successfully');
-  } else if (commit) {
-    showOperationMessage('Invalid size for tile', 'error');
-  }
-}
-
-// Layout management
-
-/**
- * Exports the current layout as JSON
- */
-function exportLayout(): void {
-  try {
-    const layoutData = JSON.stringify(dashboardStore.currentLayout, null, 2);
-    const blob = new Blob([layoutData], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `dashboard-layout-${Date.now()}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    URL.revokeObjectURL(url);
-    showOperationMessage('Layout exported successfully');
-  } catch (error) {
-    console.error('Failed to export layout:', error);
-    showOperationMessage('Failed to export layout', 'error');
+    console.debug('Resize operation completed successfully');
+  } else {
+    console.debug('Resize operation cancelled or failed');
   }
 }
 
 /**
- * Triggers the file input for importing a layout
+ * Component lifecycle: onMounted
+ * 
+ * Performs initialization when the component is mounted.
+ * Loads saved layout and sets up any necessary event listeners.
  */
-function importLayout(): void {
-  if (fileInput.value) {
-    fileInput.value.click();
-  }
-}
-
-/**
- * Handles file selection and import
- * @param {Event} event - File input change event
- */
-function handleFileImport(event: Event): void {
-  const target = event.target as HTMLInputElement;
-  const file = target.files?.[0];
-
-  if (!file) return;
-
-  if (!file.name.toLowerCase().endsWith('.json')) {
-    showOperationMessage('Please select a valid JSON file', 'error');
-    return;
-  }
-
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    try {
-      const content = e.target?.result as string;
-      const layoutData = JSON.parse(content);
-
-      // Validate the layout structure
-      if (!validateLayoutData(layoutData)) {
-        showOperationMessage('Invalid layout file format', 'error');
-        return;
-      }
-
-      // Show confirmation before importing
-      showConfirmation(
-        'Import Layout',
-        `This will replace your current dashboard with "${layoutData.name || 'Imported Layout'}". Current tiles will be lost. Continue?`,
-        'Import',
-        () => {
-          try {
-            importLayoutData(layoutData);
-            showOperationMessage(`Layout "${layoutData.name || 'Imported Layout'}" imported successfully`);
-          } catch (error) {
-            console.error('Failed to import layout:', error);
-            showOperationMessage('Failed to import layout', 'error');
-          }
-        }
-      );
-    } catch (error) {
-      console.error('Failed to parse layout file:', error);
-      showOperationMessage('Invalid JSON file format', 'error');
-    }
-  };
-
-  reader.onerror = () => {
-    showOperationMessage('Failed to read file', 'error');
-  };
-
-  reader.readAsText(file);
-
-  // Reset the input value so the same file can be selected again
-  target.value = '';
-}
-
-/**
- * Validates the imported layout data structure
- * @param {unknown} data - Data to validate
- * @returns {boolean} Whether the data is valid
- */
-function validateLayoutData(data: unknown): data is {
-  id: string;
-  name: string;
-  tiles: unknown[];
-  gridColumns: number;
-  created: string;
-  modified: string;
-} {
-  if (typeof data !== 'object' || data === null) return false;
-
-  const layout = data as Record<string, unknown>;
-
-  // Check required properties
-  if (typeof layout.id !== 'string') return false;
-  if (typeof layout.name !== 'string') return false;
-  if (!Array.isArray(layout.tiles)) return false;
-  if (typeof layout.gridColumns !== 'number') return false;
-  if (typeof layout.created !== 'string') return false;
-  if (typeof layout.modified !== 'string') return false;
-
-  // Validate tiles structure
-  for (const tile of layout.tiles) {
-    if (!validateTileData(tile)) return false;
-  }
-
-  return true;
-}
-
-/**
- * Validates individual tile data
- * @param {unknown} tile - Tile data to validate
- * @returns {boolean} Whether the tile data is valid
- */
-function validateTileData(tile: unknown): boolean {
-  if (typeof tile !== 'object' || tile === null) return false;
-
-  const t = tile as Record<string, unknown>;
-
-  return (
-    typeof t.id === 'string' &&
-    typeof t.title === 'string' &&
-    typeof t.x === 'number' &&
-    typeof t.y === 'number' &&
-    typeof t.width === 'number' &&
-    typeof t.height === 'number' &&
-    typeof t.created === 'string' &&
-    typeof t.modified === 'string'
-  );
-}
-
-/**
- * Imports the validated layout data into the dashboard
- * @param {object} layoutData - Validated layout data
- */
-function importLayoutData(layoutData: {
-  id: string;
-  name: string;
-  tiles: unknown[];
-  gridColumns: number;
-  created: string;
-  modified: string;
-}): void {
-  // Convert string dates back to Date objects and properly type the tiles
-  const importedLayout: DashboardLayout = {
-    ...layoutData,
-    tiles: layoutData.tiles.map((tile: unknown) => {
-      const t = tile as Tile & {
-        created: string;
-        modified: string;
-      };
-      return {
-        id: t.id,
-        title: t.title,
-        x: t.x,
-        y: t.y,
-        width: t.width,
-        height: t.height,
-        minWidth: t.minWidth,
-        minHeight: t.minHeight,
-        maxWidth: t.maxWidth,
-        maxHeight: t.maxHeight,
-        created: new Date(t.created),
-        modified: new Date(t.modified),
-      } as Tile;
-    }),
-    created: new Date(layoutData.created),
-    modified: new Date(),
-  };
-
-  // Use the dashboard store to load the layout
-  dashboardStore.loadLayoutData(importedLayout);
-}
-
-/**
- * Shows layout information
- */
-function showLayoutInfo(): void {
-  const layout = dashboardStore.currentLayout;
-  const info = `
-Layout: ${layout.name}
-Tiles: ${layout.tiles.length}
-Columns: ${layout.gridColumns}
-Created: ${layout.created.toLocaleString()}
-Modified: ${layout.modified.toLocaleString()}
-  `.trim();
-
-  alert(info); // Simple info display - could be enhanced with a proper modal
-}
-
-// Responsive handling
-
-/**
- * Handles window resize for responsive behavior
- */
-function handleWindowResize(): void {
-  dashboardStore.updateBreakpoint(window.innerWidth);
-}
-
-// Lifecycle hooks
-
 onMounted(() => {
-  // Set up responsive behavior
-  handleWindowResize();
-  window.addEventListener('resize', handleWindowResize);
-
-  // Load layout from localStorage
-  dashboardStore.loadLayout();
-});
-
-onUnmounted(() => {
-  window.removeEventListener('resize', handleWindowResize);
-});
-
-// Watch for breakpoint changes and show notification
-watch(
-  () => dashboardStore.currentBreakpoint,
-  (newBreakpoint, oldBreakpoint) => {
-    if (oldBreakpoint) {
-      showOperationMessage(`Switched to ${newBreakpoint} layout`, 'info');
-    }
+  // Load saved layout if available
+  try {
+    dashboardStore.loadLayout();
+    console.debug('Dashboard container mounted and layout loaded');
+  } catch (error) {
+    console.error('Failed to load layout on mount:', error);
   }
-);
+});
 </script>
 
 <style scoped>
+/**
+ * DashboardContainer Styles
+ * 
+ * Comprehensive styling for the dashboard container including grid layout,
+ * drag/drop visual feedback, and responsive design.
+ */
+
 .dashboard-container {
-  min-height: 100vh;
-  background-color: var(--bs-body-bg);
-}
-
-.dashboard-header {
-  padding: 0.5rem var(--container-padding);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
   background-color: var(--bs-light);
-  border-bottom: 1px solid var(--bs-border-color);
-  position: sticky;
-  top: 0;
-  z-index: 1000;
 }
 
-.dashboard-title {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--bs-dark);
-  white-space: nowrap;
-}
-
-.dashboard-controls {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.dashboard-controls .btn {
-  white-space: nowrap;
-  font-size: 0.875rem;
-}
-
-.dropdown-item.disabled {
-  color: var(--bs-secondary);
-  pointer-events: none;
-  background-color: transparent;
-}
-
-.dashboard-status-compact {
-  display: flex;
-  align-items: center;
-  white-space: nowrap;
-}
-
+/* Grid container */
 .grid-container {
+  flex: 1;
   position: relative;
-  padding: var(--container-padding);
-  min-height: calc(100vh - 120px);
   display: grid;
   grid-template-columns: repeat(var(--grid-columns), 1fr);
   grid-auto-rows: var(--row-height);
   gap: var(--grid-gap);
-  transition: all 0.2s ease;
+  padding: var(--container-padding);
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0; /* Allow flex shrinking */
 }
 
+/* Grid container states */
 .grid-container.dragging {
   background-color: rgba(0, 123, 255, 0.05);
 }
@@ -870,6 +399,7 @@ watch(
   background-color: rgba(40, 167, 69, 0.05);
 }
 
+/* Grid lines for visual guidance */
 .grid-lines {
   position: absolute;
   top: 0;
@@ -877,32 +407,57 @@ watch(
   right: 0;
   bottom: 0;
   pointer-events: none;
-  z-index: 1;
+  z-index: 5;
 }
 
 .grid-line {
   position: absolute;
-  opacity: 0.3;
-  transition: opacity 0.2s ease;
+  background-color: rgba(0, 123, 255, 0.3);
+  pointer-events: none;
 }
 
 .grid-line-vertical {
-  top: 0;
-  bottom: 0;
   width: 1px;
-  background-color: var(--bs-primary);
+  height: 100%;
+  opacity: 0.6;
 }
 
+/* Drop zone indicator */
 .drop-zone-indicator {
   position: absolute;
   background-color: rgba(0, 123, 255, 0.2);
   border: 2px dashed var(--bs-primary);
-  border-radius: 4px;
-  pointer-events: none;
+  border-radius: 8px;
   z-index: 10;
-  transition: all 0.1s ease;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
 }
 
+.drop-zone-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--bs-primary);
+  font-weight: 600;
+  text-align: center;
+}
+
+.drop-zone-content .fas {
+  font-size: 1.5rem;
+  opacity: 0.8;
+}
+
+.drop-zone-text {
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Empty state */
 .empty-state {
   grid-column: 1 / -1;
   display: flex;
@@ -910,6 +465,7 @@ watch(
   justify-content: center;
   min-height: 400px;
   text-align: center;
+  color: var(--bs-secondary);
 }
 
 .empty-state-content {
@@ -919,80 +475,143 @@ watch(
 
 .empty-state-icon {
   font-size: 4rem;
-  color: var(--bs-secondary);
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
+  opacity: 0.6;
+  color: var(--bs-primary);
 }
 
 .empty-state-title {
-  color: var(--bs-dark);
+  font-size: 1.5rem;
+  font-weight: 600;
   margin-bottom: 1rem;
+  color: var(--bs-dark);
 }
 
 .empty-state-text {
-  color: var(--bs-secondary);
+  font-size: 1rem;
+  line-height: 1.6;
   margin-bottom: 2rem;
+  color: var(--bs-secondary);
 }
 
-/* Responsive adjustments */
-@media (max-width: 1199px) {
-  .dashboard-header {
-    padding: 0.5rem 1rem;
-  }
+/* Modal styling */
+.modal-content {
+  border-radius: 12px;
+  border: none;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
 
+.modal-header {
+  background-color: var(--bs-light);
+  border-bottom: 1px solid var(--bs-border-color);
+  border-radius: 12px 12px 0 0;
+  padding: 1.25rem 1.5rem;
+}
+
+.modal-title {
+  font-weight: 600;
+  color: var(--bs-dark);
+}
+
+.modal-body {
+  padding: 1.5rem;
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.modal-footer {
+  background-color: var(--bs-light);
+  border-top: 1px solid var(--bs-border-color);
+  border-radius: 0 0 12px 12px;
+  padding: 1rem 1.5rem;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
   .grid-container {
-    padding: 1rem;
+    padding: calc(var(--container-padding) * 0.75);
+    gap: calc(var(--grid-gap) * 0.75);
   }
-}
-
-@media (max-width: 991px) {
-  .dashboard-status-compact {
-    display: none; /* Hide status on smaller screens to save space */
+  
+  .empty-state {
+    min-height: 300px;
   }
-}
-
-@media (max-width: 767px) {
-  .dashboard-header {
-    padding: 0.375rem 0.75rem;
-  }
-
-  .dashboard-title {
-    font-size: 1.1rem;
-  }
-
-  .dashboard-controls {
-    gap: 0.25rem;
-  }
-
-  .dashboard-controls .btn {
-    font-size: 0.8rem;
-    padding: 0.25rem 0.5rem;
-  }
-
+  
   .empty-state-content {
-    padding: 1rem;
+    padding: 1.5rem;
   }
-
+  
   .empty-state-icon {
     font-size: 3rem;
+    margin-bottom: 1rem;
+  }
+  
+  .empty-state-title {
+    font-size: 1.25rem;
+  }
+  
+  .empty-state-text {
+    font-size: 0.9rem;
+    margin-bottom: 1.5rem;
   }
 }
 
-@media (max-width: 575px) {
+@media (max-width: 576px) {
   .grid-container {
-    display: block;
+    padding: calc(var(--container-padding) * 0.5);
+    gap: calc(var(--grid-gap) * 0.5);
   }
-
-  .dashboard-title {
-    font-size: 1rem;
+  
+  .drop-zone-content {
+    gap: 0.25rem;
   }
-
-  .dashboard-controls .btn {
+  
+  .drop-zone-content .fas {
+    font-size: 1.25rem;
+  }
+  
+  .drop-zone-text {
     font-size: 0.75rem;
-    padding: 0.2rem 0.4rem;
   }
+}
 
-  .dashboard-controls .btn .fas {
-    margin-right: 0.25rem !important;
+/* Animation for smooth transitions */
+.grid-container {
+  transition: background-color 0.3s ease;
+}
+
+.drop-zone-indicator {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Accessibility improvements */
+@media (prefers-reduced-motion: reduce) {
+  .grid-container,
+  .drop-zone-indicator {
+    transition: none;
+    animation: none;
+  }
+}
+
+/* Print styles */
+@media print {
+  .grid-container {
+    overflow: visible;
+    height: auto;
+  }
+  
+  .drop-zone-indicator,
+  .grid-lines {
+    display: none;
   }
 }
 </style>
